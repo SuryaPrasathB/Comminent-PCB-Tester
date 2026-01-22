@@ -1,7 +1,7 @@
 import os
 import mysql.connector
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog, QAbstractItemView
+    QWidget, QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog, QAbstractItemView, QHeaderView
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, QDateTime, QTime, QDate
@@ -53,6 +53,18 @@ class ResultsView(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setRowCount(0)
+
+        # Header Configuration
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)  # Description column
+        header.setSectionResizeMode(12, QHeaderView.Stretch) # Result column
+        header.setMinimumSectionSize(50)
+
+        # Row Height / Word Wrap
+        self.table.setWordWrap(True)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
         # Default Dates
         today = QDate.currentDate()
