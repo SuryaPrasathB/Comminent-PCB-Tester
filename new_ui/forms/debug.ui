@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DebugView</class>
+ <widget class="QWidget" name="DebugView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+
+   <!-- LEFT: RELAY CONTROL -->
+   <item>
+    <widget class="QGroupBox" name="groupBox_relay">
+     <property name="title">
+      <string>Relay Switching</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_relay">
+      <item>
+       <widget class="QLabel" name="label_com">
+        <property name="text">
+         <string>Modbus COM Port:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBox_comPorts"/>
+      </item>
+
+      <item>
+       <widget class="QFrame" name="line_1">
+        <property name="frameShape">
+         <enum>QFrame::HLine</enum>
+        </property>
+       </widget>
+      </item>
+
+      <!-- PHASE SELECTION -->
+      <item>
+       <layout class="QGridLayout" name="gridLayout_phases">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_r">
+          <property name="text">
+           <string>R Phase Voltage:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="combo_r_voltage"/>
+        </item>
+
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_y">
+          <property name="text">
+           <string>Y Phase Voltage:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="combo_y_voltage"/>
+        </item>
+
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_b">
+          <property name="text">
+           <string>B Phase Voltage:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QComboBox" name="combo_b_voltage"/>
+        </item>
+
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_n">
+          <property name="text">
+           <string>Neutral:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QComboBox" name="combo_neutral"/>
+        </item>
+
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_curr">
+          <property name="text">
+           <string>Current Injection:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QComboBox" name="combo_current"/>
+        </item>
+       </layout>
+      </item>
+
+      <item>
+       <spacer name="verticalSpacer_relay">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+
+      <item>
+       <widget class="QPushButton" name="btn_apply_taps">
+        <property name="text">
+         <string>Apply Settings</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">background-color: #007bff; color: white; font-weight: bold;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_reset_taps">
+        <property name="text">
+         <string>Reset All (OFF)</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">background-color: #6c757d; color: white;</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- RIGHT: SENSOR READINGS -->
+   <item>
+    <widget class="QGroupBox" name="groupBox_sensors">
+     <property name="title">
+      <string>Sensor Readings</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_sensors">
+
+      <!-- QR READER -->
+      <item>
+       <widget class="QGroupBox" name="groupBox_qr">
+        <property name="title">
+         <string>QR Scanner</string>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_qr">
+         <item>
+          <widget class="QLineEdit" name="txt_qr">
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+           <property name="placeholderText">
+            <string>Scanned Value</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_read_qr">
+           <property name="text">
+            <string>Read</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+
+      <!-- DYNAMIC SENSORS -->
+      <!-- We will hardcode common ones for .ui, but logic can handle dynamic -->
+      <item>
+       <layout class="QFormLayout" name="formLayout_sensors">
+
+        <item row="0" column="0">
+         <widget class="QLabel" name="lbl_v">
+          <property name="text">
+           <string>DC Voltage:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <layout class="QHBoxLayout" name="horizontalLayout_v">
+          <item>
+           <widget class="QLineEdit" name="txt_dc_voltage">
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_read_dc_voltage">
+            <property name="text">
+             <string>Read</string>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>50</width>
+              <height>16777215</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+
+        <item row="1" column="0">
+         <widget class="QLabel" name="lbl_i">
+          <property name="text">
+           <string>DC Current:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <layout class="QHBoxLayout" name="horizontalLayout_i">
+          <item>
+           <widget class="QLineEdit" name="txt_dc_current">
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_read_dc_current">
+            <property name="text">
+             <string>Read</string>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>50</width>
+              <height>16777215</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+
+       </layout>
+      </item>
+
+      <item>
+       <spacer name="verticalSpacer_sensors">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
