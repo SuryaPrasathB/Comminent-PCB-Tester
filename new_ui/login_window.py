@@ -44,7 +44,7 @@ class LoginWindow(QDialog):
         self.txt_username = self.findChild(QLineEdit, "lineEdit_username")
         self.txt_password = self.findChild(QLineEdit, "lineEdit_password")
         self.cmb_role = self.findChild(QComboBox, "comboBox_role")
-        self.btn_login = self.findChild(QPushButton, "pushButton_login")
+        self.btn_login = self.findChild(QPushButton, "btn_primary")
 
         # Set Title
         self.setWindowTitle("Login - PCB Tester")

@@ -1,8 +1,8 @@
 import os
 import sys
-from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QLabel, QPushButton, QPlainTextEdit, QMessageBox, QApplication, QPropertyAnimation
+from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QLabel, QPushButton, QPlainTextEdit, QMessageBox, QApplication
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, Qt, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import QFile, QIODevice, Qt, QEasingCurve
 
 from new_ui.icons import IconHelper
 from new_ui.theme import AppTheme

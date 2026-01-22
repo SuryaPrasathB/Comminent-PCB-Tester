@@ -16,6 +16,10 @@ class IconHelper:
         if color is None:
             color = "#555555" # Neutral gray
 
+        # Check if it is a predefined key
+        if name in IconHelper.ICONS:
+            name = IconHelper.ICONS[name]
+
         return qta.icon(name, color=color)
 
     @staticmethod
