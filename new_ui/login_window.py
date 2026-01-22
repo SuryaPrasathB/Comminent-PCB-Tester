@@ -31,7 +31,7 @@ class LoginWindow(QDialog):
             logger.error(f"Cannot open login.ui at {ui_path}")
             raise RuntimeError("Cannot open login.ui")
 
-        self.ui = loader.load(ui_file, self)
+        self.ui = loader.load(ui_file)
         ui_file.close()
 
         # Set layout correctly
