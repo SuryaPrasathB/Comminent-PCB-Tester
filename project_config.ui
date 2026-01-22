@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ProjectConfigWidget</class>
+ <widget class="QWidget" name="ProjectConfigWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1400</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Project Configuration</string>
+  </property>
+
+  <property name="styleSheet">
+   <string notr="true">
+QWidget#ProjectConfigWidget {
+    background-color: #f0f2f5;
+}
+QLabel {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    color: #555;
+}
+QLineEdit {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    background-color: white;
+    font-size: 14px;
+    selection-background-color: #0078d7;
+    color: #333;
+}
+
+/* 🔑 Compact combo for tables */
+QComboBox {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 2px 4px;     /* ✅ FIX */
+    font-size: 13px;      /* ✅ FIX */
+    background-color: white;
+    color: #333;
+}
+
+QComboBox::drop-down {
+    width: 16px;
+    border: none;
+}
+
+QComboBox::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+
+QLineEdit:focus, QComboBox:focus {
+    border: 1px solid #0078d7;
+}
+QPushButton {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #0078d7, stop:1 #005a9e);
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+}
+QPushButton:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #0088e7, stop:1 #006ac1);
+}
+QPushButton:pressed {
+    background-color: #004578;
+}
+QGroupBox {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+}
+QTableWidget {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    background-color: white;
+    selection-background-color: #0078d7;
+}
+QHeaderView::section {
+    background-color: #e9ecef;
+    padding: 8px;
+    border: 1px solid #ccc;
+    font-weight: bold;
+}
+QTableWidget::item {
+    padding: 1px;
+}
+QTableWidget::alternating-row-color {
+    background-color: #f8f9fa;
+}
+   </string>
+  </property>
+
+  <layout class="QVBoxLayout" name="verticalLayout">
+
+   <item>
+    <widget class="QLabel" name="label_title">
+     <property name="styleSheet">
+      <string notr="true">
+font-size: 22px;
+font-weight: bold;
+color: #2c3e50;
+padding: 10px;
+      </string>
+     </property>
+     <property name="text">
+      <string>Project Configuration</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QGroupBox" name="groupBox_ProjectDetails">
+     <property name="title">
+      <string>Project Details</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_ProjectDetails">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_top">
+        <item>
+         <widget class="QComboBox" name="comboBox_projects">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+          </property>
+          <property name="toolTip">
+           <string>Select existing project to edit</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_projectName">
+        <item>
+         <widget class="QLabel" name="label_projectName">
+          <property name="text">
+           <string>Project Name:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_projectName">
+          <property name="toolTip">
+           <string>Enter project name</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_MainContent" stretch="2,1">
+
+     <item>
+      <widget class="QGroupBox" name="groupBox_TestCases">
+       <property name="title">
+        <string>Test Case Configuration</string>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_TestCases">
+        <item>
+         <widget class="QTableWidget" name="tableWidget_testCases">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding"/>
+          </property>
+          <property name="columnCount">
+           <number>9</number>
+          </property>
+          <attribute name="horizontalHeaderVisible">
+           <bool>true</bool>
+          </attribute>
+          <column><property name="text"><string>S.No</string></property></column>
+          <column><property name="text"><string>Enable</string></property></column>
+          <column><property name="text"><string>Description</string></property></column>
+          <column><property name="text"><string>Input R</string></property></column>
+          <column><property name="text"><string>Input Y</string></property></column>
+          <column><property name="text"><string>Input B</string></property></column>
+          <column><property name="text"><string>Neutral</string></property></column>
+          <column><property name="text"><string>Expected V</string></property></column>
+          <column><property name="text"><string>Expected I</string></property></column>
+         </widget>
+        </item>
+
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_TableButtons">
+          <item><widget class="QPushButton" name="pushButton_moveUp"><property name="text"><string>Move Up</string></property></widget></item>
+          <item><widget class="QPushButton" name="pushButton_moveDown"><property name="text"><string>Move Down</string></property></widget></item>
+          <item>
+           <spacer name="verticalSpacer_TableButtons">
+            <property name="orientation"><enum>Qt::Vertical</enum></property>
+            <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+
+     <!-- ================== CIRCUIT DIAGRAM ================== -->
+     <item>
+      <widget class="QGroupBox" name="groupBox_CircuitDiagram">
+       <property name="title">
+        <string>Circuit Diagram</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_CircuitDiagram">
+
+        <item>
+         <widget class="QLabel" name="label_circuitDiagram">
+
+          <!-- 🔴 THE ONLY FIX -->
+          <property name="minimumSize">
+           <size>
+            <width>480</width>
+            <height>240</height>
+           </size>
+          </property>
+
+          <property name="text">
+           <string>Circuit diagram placeholder</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+
+        <item>
+         <spacer name="verticalSpacer_CircuitDiagram">
+          <property name="orientation"><enum>Qt::Vertical</enum></property>
+          <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+         </spacer>
+        </item>
+
+       </layout>
+      </widget>
+     </item>
+
+    </layout>
+   </item>
+
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_buttons">
+     <property name="spacing"><number>20</number></property>
+     <item>
+      <spacer name="horizontalSpacer_Buttons">
+       <property name="orientation"><enum>Qt::Horizontal</enum></property>
+       <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+      </spacer>
+     </item>
+     <item><widget class="QPushButton" name="pushButton_delete"><property name="text"><string>Delete Project</string></property></widget></item>
+     <item><widget class="QPushButton" name="pushButton_save"><property name="text"><string>Save Project</string></property></widget></item>
+    </layout>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
