@@ -1,10 +1,10 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QCheckBox, QComboBox, QMessageBox,
-    QVBoxLayout, QHeaderView, QAbstractItemView
+    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout
 )
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, Qt
+from PySide6.QtCore import QFile, QIODevice, Qt, QEvent
 from PySide6.QtGui import QPixmap
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
@@ -25,10 +25,33 @@ class ProjectConfigView(QWidget):
         self.load_ui()
         self.setup_icons()
         self.connect_signals()
+        
+        # State for resizing
+        self.current_diagram_png = None
+        self.lbl_circuit.installEventFilter(self)
 
         # Initial Population
         self.refresh_projects()
         self.populate_test_table(default_test_cases)
+        
+        # Table Header Config
+        self.configure_table_headers()
+
+    def eventFilter(self, source, event):
+        if source == self.lbl_circuit and event.type() == QEvent.Resize:
+            if self.current_diagram_png:
+                self.update_diagram_pixmap()
+        return super().eventFilter(source, event)
+    
+    def update_diagram_pixmap(self):
+        if not self.current_diagram_png: return
+        try:
+            pix = QPixmap()
+            pix.loadFromData(self.current_diagram_png)
+            if not pix.isNull():
+                self.lbl_circuit.setPixmap(pix.scaled(self.lbl_circuit.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        except Exception as e:
+            logger.error(f"Error resizing pixmap: {e}")
 
     def load_ui(self):
         loader = QUiLoader()
@@ -53,6 +76,10 @@ class ProjectConfigView(QWidget):
         self.txt_project = self.findChild(QWidget, "lineEdit_projectName")
         self.cmb_projects = self.findChild(QWidget, "comboBox_projects")
         self.lbl_circuit = self.findChild(QWidget, "label_circuitDiagram")
+        
+        # Ensure label has no fixed size constraint that pushes layout
+        # (Though we handled this in UI, doing it here is safe too)
+        # self.lbl_circuit.setScaledContents(False) # Default
 
         self.btn_save = self.findChild(QWidget, "pushButton_save")
         self.btn_delete = self.findChild(QWidget, "pushButton_delete")
@@ -62,8 +89,32 @@ class ProjectConfigView(QWidget):
         # Table Config
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
+        
+        # Row highlighting style
+        self.table.setStyleSheet("""
+            QTableWidget::item:selected {
+                background-color: #0078d7;
+                color: white;
+                font-weight: bold;
+            }
+        """)
+        
+    def configure_table_headers(self):
+        header = self.table.horizontalHeader()
+        
+        # "R Tap", "Y Tap", "B Tap", "Neutral", "Exp V", "Exp I" (indices 3,4,5,6,7,8)
+        fixed_width = 80
+        for i in [3, 4, 5, 6, 7, 8]:
+            header.setSectionResizeMode(i, QHeaderView.Fixed)
+            self.table.setColumnWidth(i, fixed_width)
+            
+        # Description (index 2) - stretch
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        
+        # S.No (0) and Enable (1) - ResizeToContents
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
 
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_save, "save", "white")
@@ -105,10 +156,16 @@ class ProjectConfigView(QWidget):
             sn.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(row, 0, sn)
 
-            # Enable Checkbox
+            # Enable Checkbox (Centered)
             chk = QCheckBox()
             chk.setChecked(tc.get("enabled", True))
-            self.table.setCellWidget(row, 1, chk)
+            
+            chk_widget = QWidget()
+            chk_layout = QHBoxLayout(chk_widget)
+            chk_layout.addWidget(chk)
+            chk_layout.setAlignment(Qt.AlignCenter)
+            chk_layout.setContentsMargins(0,0,0,0)
+            self.table.setCellWidget(row, 1, chk_widget)
 
             # Desc
             self.table.setItem(row, 2, QTableWidgetItem(tc.get("desc", "")))
@@ -132,6 +189,20 @@ class ProjectConfigView(QWidget):
         combo.addItems(values)
         combo.setCurrentText(current)
         combo.currentTextChanged.connect(self.on_combo_changed)
+        
+        # Apply stylesheet to hide arrow when not active/hovered, but make it accessible
+        # User request: "dont display the combo box arrows, when that particular cell is clean, open combo box."
+        combo.setStyleSheet("""
+            QComboBox {
+                border: none;
+                padding-left: 2px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 0px; 
+            }
+        """)
+        
         self.table.setCellWidget(row, col, combo)
 
     def on_combo_changed(self, _=None):
@@ -156,9 +227,24 @@ class ProjectConfigView(QWidget):
             self.table.setCurrentCell(r + 1, 0)
 
     def _swap_rows(self, r1, r2):
+        # Helper to get checkbox state from widget container
+        def get_checked(row):
+            widget = self.table.cellWidget(row, 1) # QWidget container
+            if widget:
+                # Find QCheckBox child
+                cb = widget.findChild(QCheckBox)
+                return cb.isChecked() if cb else False
+            return False
+            
+        def set_checked(row, state):
+            widget = self.table.cellWidget(row, 1)
+            if widget:
+                cb = widget.findChild(QCheckBox)
+                if cb: cb.setChecked(state)
+
         def read_row(row):
             return {
-                "enabled": self.table.cellWidget(row, 1).isChecked(),
+                "enabled": get_checked(row),
                 "desc": self.table.item(row, 2).text(),
                 "r": self.table.cellWidget(row, 3).currentText(),
                 "y": self.table.cellWidget(row, 4).currentText(),
@@ -168,7 +254,7 @@ class ProjectConfigView(QWidget):
                 "i": self.table.item(row, 8).text(),
             }
         def write_row(row, data):
-            self.table.cellWidget(row, 1).setChecked(data["enabled"])
+            set_checked(row, data["enabled"])
             self.table.item(row, 2).setText(data["desc"])
             self.table.cellWidget(row, 3).setCurrentText(data["r"])
             self.table.cellWidget(row, 4).setCurrentText(data["y"])
@@ -214,9 +300,16 @@ class ProjectConfigView(QWidget):
             QMessageBox.warning(self, "Error", "Project name required")
             return
 
+        def get_checked(row):
+            widget = self.table.cellWidget(row, 1)
+            if widget:
+                cb = widget.findChild(QCheckBox)
+                return cb.isChecked() if cb else False
+            return False
+
         data = []
         for row in range(self.table.rowCount()):
-            if not self.table.cellWidget(row, 1).isChecked(): continue
+            if not get_checked(row): continue
             data.append({
                 "sn": row + 1,
                 "desc": self.table.item(row, 2).text(),
@@ -260,9 +353,9 @@ class ProjectConfigView(QWidget):
 
             png = generate_three_phase_diagram(r, y, b, n, dc_v, dc_i)
             if png:
-                pix = QPixmap()
-                pix.loadFromData(png)
-                self.lbl_circuit.setPixmap(pix.scaled(self.lbl_circuit.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.current_diagram_png = png
+                self.update_diagram_pixmap()
+
         except Exception as e:
             logger.error(f"Diagram error: {e}")
 

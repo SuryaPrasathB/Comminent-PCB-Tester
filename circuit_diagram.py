@@ -191,7 +191,7 @@ def generate_three_phase_diagram(
     # RENDER TO MEMORY (UI SAFE)
     # =================================================
     buffer = io.BytesIO()
-    d.save(buffer, "png", dpi=150)
+    d.save(buffer, "png", dpi=300)
     buffer.seek(0)
 
     data = buffer.read()
