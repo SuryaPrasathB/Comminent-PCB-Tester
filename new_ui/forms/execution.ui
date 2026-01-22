@@ -6,124 +6,148 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1000</width>
+    <width>1200</width>
     <height>700</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
-   <!-- TOP SECTION -->
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <property name="spacing">
+    <number>15</number>
+   </property>
+
+   <!-- TOP SECTION: Single Row -->
    <item>
     <layout class="QHBoxLayout" name="topLayout">
      <property name="spacing">
-      <number>20</number>
+      <number>15</number>
      </property>
-     <!-- TOP LEFT: Project & Serial -->
-     <item>
-      <layout class="QVBoxLayout" name="topLeftLayout">
-        <item>
-            <widget class="QLabel" name="label_project">
-                <property name="text">
-                    <string>Select Project:</string>
-                </property>
-                <property name="styleSheet">
-                    <string notr="true">font-weight: bold;</string>
-                </property>
-            </widget>
-        </item>
-        <item>
-            <widget class="QComboBox" name="comboBox_projects">
-                <property name="minimumSize">
-                    <size>
-                        <width>250</width>
-                        <height>35</height>
-                    </size>
-                </property>
-            </widget>
-        </item>
-        <item>
-            <widget class="QLabel" name="label_serial">
-                <property name="text">
-                    <string>PCB Serial Number:</string>
-                </property>
-                <property name="styleSheet">
-                    <string notr="true">font-weight: bold; margin-top: 5px;</string>
-                </property>
-            </widget>
-        </item>
-        <item>
-            <widget class="QLineEdit" name="lineEdit_pcbSerial">
-                <property name="minimumSize">
-                    <size>
-                        <width>250</width>
-                        <height>35</height>
-                    </size>
-                </property>
-                <property name="readOnly">
-                    <bool>true</bool>
-                </property>
-                <property name="placeholderText">
-                    <string>Auto-detected via QR</string>
-                </property>
-            </widget>
-        </item>
-      </layout>
-     </item>
 
+     <!-- Group 1: Project -->
      <item>
-        <spacer name="horizontalSpacer_top">
-            <property name="orientation">
-                <enum>Qt::Horizontal</enum>
+        <widget class="QLabel" name="label_project">
+            <property name="text">
+                <string>Select Project:</string>
             </property>
-            <property name="sizeHint" stdset="0">
+            <property name="styleSheet">
+                <string notr="true">font-weight: bold;</string>
+            </property>
+        </widget>
+     </item>
+     <item>
+        <widget class="QComboBox" name="comboBox_projects">
+            <property name="minimumSize">
                 <size>
-                    <width>40</width>
-                    <height>20</height>
+                    <width>250</width>
+                    <height>35</height>
                 </size>
             </property>
-        </spacer>
+        </widget>
      </item>
 
-     <!-- TOP RIGHT: COM Port -->
      <item>
-      <layout class="QVBoxLayout" name="topRightLayout">
-        <item>
-            <widget class="QLabel" name="label_com">
-                <property name="text">
-                    <string>COM Port:</string>
-                </property>
-                <property name="styleSheet">
-                    <string notr="true">font-weight: bold;</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-            </widget>
-        </item>
-        <item>
-            <widget class="QComboBox" name="comboBox_comPort">
-                <property name="minimumSize">
-                    <size>
-                        <width>150</width>
-                        <height>35</height>
-                    </size>
-                </property>
-            </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer_topRight">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-      </layout>
+      <spacer name="horizontalSpacer_1">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
+
+     <!-- Group 2: Serial -->
+     <item>
+        <widget class="QLabel" name="label_serial">
+            <property name="text">
+                <string>PCB Serial Number:</string>
+            </property>
+            <property name="styleSheet">
+                <string notr="true">font-weight: bold;</string>
+            </property>
+        </widget>
+     </item>
+     <item>
+        <widget class="QLineEdit" name="lineEdit_pcbSerial">
+            <property name="minimumSize">
+                <size>
+                    <width>200</width>
+                    <height>35</height>
+                </size>
+            </property>
+            <property name="readOnly">
+                <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+                <string>Auto-detected via QR</string>
+            </property>
+        </widget>
+     </item>
+
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+
+     <!-- Group 3: COM -->
+     <item>
+        <widget class="QLabel" name="label_com">
+            <property name="text">
+                <string>COM Port:</string>
+            </property>
+            <property name="styleSheet">
+                <string notr="true">font-weight: bold;</string>
+            </property>
+        </widget>
+     </item>
+     <item>
+        <widget class="QComboBox" name="comboBox_comPort">
+            <property name="minimumSize">
+                <size>
+                    <width>150</width>
+                    <height>35</height>
+                </size>
+            </property>
+        </widget>
+     </item>
+
+     <item>
+      <spacer name="horizontalSpacer_end">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+
     </layout>
    </item>
 
