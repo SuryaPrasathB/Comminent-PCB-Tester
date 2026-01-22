@@ -72,6 +72,15 @@ class ExecutionView(QWidget):
         self.cmb_comPort.installEventFilter(self)
         self.cmb_projects.installEventFilter(self)
 
+        # Row highlighting style
+        self.table_results.setStyleSheet("""
+            QTableWidget::item:selected {
+                background-color: #0078d7;
+                color: white;
+                font-weight: bold;
+            }
+        """)
+
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_start, "start", "white")
         IconHelper.apply_icon(self.btn_stop, "stop", "white")

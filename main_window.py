@@ -52,8 +52,8 @@ class MainWindow(QMainWindow):
         self.results_controller   = ResultsController(self.tab_results)
         logger.info("ResultsController initialized")
 
-        self.showMaximized()
-        logger.info("Main window maximized")
+        self.show()
+        logger.info("Main window shown")
 
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
 

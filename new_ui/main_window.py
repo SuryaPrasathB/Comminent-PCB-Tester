@@ -55,7 +55,6 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.ui)
         self.setWindowTitle("PCB Tester Pro")
-        self.showMaximized()
 
         # Bind Widgets
         self.stack = self.findChild(QStackedWidget, "stackedWidget_content")
