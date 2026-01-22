@@ -2,7 +2,7 @@ import os
 import sys
 from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QLabel, QPushButton, QPlainTextEdit, QMessageBox, QApplication
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, Qt, QEasingCurve
+from PySide6.QtCore import QFile, QIODevice, Qt, QEasingCurve, QPropertyAnimation
 
 from new_ui.icons import IconHelper
 from new_ui.theme import AppTheme
@@ -41,8 +41,17 @@ class MainWindow(QMainWindow):
             logger.error(f"Cannot open main_window.ui at {ui_path}")
             raise RuntimeError("Cannot open main_window.ui")
 
-        self.ui = loader.load(ui_file, self)
+        loaded_widget = loader.load(ui_file)
         ui_file.close()
+
+        # Fix: If loaded UI is QMainWindow, extract its central widget to avoid nesting MainWindows
+        if isinstance(loaded_widget, QMainWindow):
+            self.ui = loaded_widget.centralWidget()
+            # Ensure we keep a reference to loaded_widget if needed, or rely on reparenting.
+            # Reparenting the central widget to self is sufficient.
+            self.ui.setParent(self)
+        else:
+            self.ui = loaded_widget
 
         self.setCentralWidget(self.ui)
         self.setWindowTitle("PCB Tester Pro")

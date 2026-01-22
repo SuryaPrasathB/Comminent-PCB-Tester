@@ -75,7 +75,7 @@ class ExecutionView(QWidget):
         IconHelper.apply_icon(self.btn_start, "start", "white")
         IconHelper.apply_icon(self.btn_stop, "stop", "white")
         IconHelper.apply_icon(self.btn_reset, "refresh")
-        IconHelper.apply_icon(self.btn_run_one, "play")
+        IconHelper.apply_icon(self.btn_run_one, "start")
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:

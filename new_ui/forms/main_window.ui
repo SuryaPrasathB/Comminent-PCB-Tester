@@ -30,8 +30,6 @@
     <property name="bottomMargin">
      <number>0</number>
     </property>
-
-    <!-- LEFT SIDEBAR -->
     <item>
      <widget class="QWidget" name="widget_sidebar" native="true">
       <property name="minimumSize">
@@ -85,23 +83,19 @@
        <property name="bottomMargin">
         <number>20</number>
        </property>
-
-       <!-- LOGO AREA -->
        <item>
         <widget class="QLabel" name="label_app_logo">
+         <property name="styleSheet">
+          <string notr="true">font-size: 16pt; font-weight: bold; color: white; margin-bottom: 20px;</string>
+         </property>
          <property name="text">
           <string>PCB TESTER</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
-         <property name="styleSheet">
-          <string notr="true">font-size: 16pt; font-weight: bold; color: white; margin-bottom: 20px;</string>
-         </property>
         </widget>
        </item>
-
-       <!-- NAVIGATION BUTTONS -->
        <item>
         <widget class="QPushButton" name="btn_nav_execution">
          <property name="text">
@@ -183,7 +177,6 @@
          </property>
         </widget>
        </item>
-
        <item>
         <spacer name="verticalSpacer_sidebar">
          <property name="orientation">
@@ -197,8 +190,6 @@
          </property>
         </spacer>
        </item>
-
-       <!-- BOTTOM SIDEBAR ITEMS -->
        <item>
         <widget class="QPushButton" name="btn_theme_toggle">
          <property name="text">
@@ -219,15 +210,11 @@
       </layout>
      </widget>
     </item>
-
-    <!-- MAIN CONTENT AREA -->
     <item>
      <layout class="QVBoxLayout" name="verticalLayout_content">
       <property name="spacing">
        <number>0</number>
       </property>
-
-      <!-- TOP HEADER -->
       <item>
        <widget class="QWidget" name="widget_header" native="true">
         <property name="minimumSize">
@@ -251,15 +238,13 @@
          <property name="rightMargin">
           <number>20</number>
          </property>
-
-         <!-- HAMBURGER BUTTON -->
          <item>
           <widget class="QPushButton" name="btn_toggle_sidebar">
            <property name="minimumSize">
-             <size>
-              <width>40</width>
-              <height>40</height>
-             </size>
+            <size>
+             <width>40</width>
+             <height>40</height>
+            </size>
            </property>
            <property name="cursor">
             <cursorShape>PointingHandCursor</cursorShape>
@@ -272,14 +257,13 @@
            </property>
           </widget>
          </item>
-
          <item>
           <widget class="QLabel" name="label_page_title">
-           <property name="text">
-            <string>Execution Dashboard</string>
-           </property>
            <property name="styleSheet">
             <string notr="true">font-size: 14pt; font-weight: bold; color: #333333;</string>
+           </property>
+           <property name="text">
+            <string>Execution Dashboard</string>
            </property>
           </widget>
          </item>
@@ -298,30 +282,25 @@
          </item>
          <item>
           <widget class="QLabel" name="label_user_info">
-           <property name="text">
-            <string>Logged in as: Admin</string>
-           </property>
            <property name="styleSheet">
             <string notr="true">font-weight: bold; color: #555555;</string>
+           </property>
+           <property name="text">
+            <string>Logged in as: Admin</string>
            </property>
           </widget>
          </item>
         </layout>
        </widget>
       </item>
-
-      <!-- STACKED WIDGET -->
       <item>
        <widget class="QStackedWidget" name="stackedWidget_content">
         <property name="currentIndex">
          <number>0</number>
         </property>
-        <!-- Pages will be added dynamically -->
         <widget class="QWidget" name="page_placeholder"/>
        </widget>
       </item>
-
-      <!-- BOTTOM STATUS BAR (One Line) -->
       <item>
        <widget class="QPlainTextEdit" name="plainTextEdit_status">
         <property name="maximumSize">
@@ -330,15 +309,14 @@
           <height>30</height>
          </size>
         </property>
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
         <property name="styleSheet">
          <string notr="true">border: none; background: transparent; font-size: 9pt; color: #666;</string>
         </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
-
      </layout>
     </item>
    </layout>
