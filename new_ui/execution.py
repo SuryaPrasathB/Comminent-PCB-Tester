@@ -1,6 +1,6 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QVBoxLayout
+    QWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QVBoxLayout, QHeaderView
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, QEvent
@@ -66,6 +66,7 @@ class ExecutionView(QWidget):
         self.table_results.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table_results.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_results.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table_results.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
 
         # Event Filters for refreshing on click
         self.cmb_comPort.installEventFilter(self)

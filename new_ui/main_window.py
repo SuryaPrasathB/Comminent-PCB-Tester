@@ -76,6 +76,17 @@ class MainWindow(QMainWindow):
         self.btn_theme = self.findChild(QPushButton, "btn_theme_toggle")
         self.btn_logout = self.findChild(QPushButton, "btn_logout")
 
+        self.sidebar_buttons = [
+            self.btn_exec, self.btn_proj, self.btn_res,
+            self.btn_debug, self.btn_logs, self.btn_settings,
+            self.btn_theme, self.btn_logout
+        ]
+
+        # Store original text for restoration
+        for btn in self.sidebar_buttons:
+            if btn:
+                btn.setProperty("original_text", btn.text())
+
         self.btn_toggle_sidebar = self.findChild(QPushButton, "btn_toggle_sidebar")
         self.widget_sidebar = self.findChild(QWidget, "widget_sidebar")
 
@@ -162,8 +173,8 @@ class MainWindow(QMainWindow):
     def toggle_sidebar(self):
         width = self.widget_sidebar.width()
 
-        # Target width: Collapsed=60, Expanded=250
-        target = 60 if width > 100 else 250
+        # Target width: Collapsed=50, Expanded=250
+        target = 50 if width > 100 else 250
 
         self.animation = QPropertyAnimation(self.widget_sidebar, b"minimumWidth")
         self.animation.setDuration(300)
@@ -181,17 +192,21 @@ class MainWindow(QMainWindow):
         self.anim2.start()
 
         # Toggle Logo Visibility if collapsing
-        self.findChild(QLabel, "label_app_logo").setVisible(target > 100)
+        logo = self.findChild(QLabel, "label_app_logo")
+        if logo:
+            logo.setVisible(target > 100)
 
-        # Toggle Button Text (Show icon only if collapsed)
-        # We implemented buttons as text with icons, so they might look weird when collapsed.
-        # Ideally we would hide the text part or use QToolButton with textBesideIcon.
-        # For this rapid prototype, we'll accept the clipping or implement a simple loop to hide text.
-
-        # Simple loop to hide text in sidebar buttons if collapsed
-        # (Assuming buttons are direct children of sidebar layout)
-        # This is a bit advanced for a quick fix, let's just stick to width animation.
-        # The CSS padding-left might need adjustment.
+        # Toggle Button Text
+        for btn in self.sidebar_buttons:
+            if not btn: continue
+            if target < 100:
+                # Collapsing: Hide text
+                btn.setText("")
+            else:
+                # Expanding: Restore text
+                original = btn.property("original_text")
+                if original is not None:
+                    btn.setText(original)
 
     def toggle_theme(self, force_theme=None):
         if force_theme:

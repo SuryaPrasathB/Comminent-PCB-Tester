@@ -6,168 +6,152 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1000</width>
+    <width>1200</width>
     <height>700</height>
    </rect>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout">
-   <!-- LEFT PANEL: CONTROLS & INFO -->
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <property name="spacing">
+    <number>15</number>
+   </property>
+
+   <!-- TOP SECTION: Single Row -->
    <item>
-    <widget class="QFrame" name="frame_controls">
-     <property name="minimumSize">
-      <size>
-       <width>300</width>
-       <height>0</height>
-      </size>
+    <layout class="QHBoxLayout" name="topLayout">
+     <property name="spacing">
+      <number>15</number>
      </property>
-     <property name="maximumSize">
-      <size>
-       <width>300</width>
-       <height>16777215</height>
-      </size>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_controls">
-      <item>
-       <widget class="QLabel" name="label_project">
-        <property name="text">
-         <string>Select Project:</string>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">font-weight: bold;</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="comboBox_projects">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>35</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_com">
-        <property name="text">
-         <string>COM Port:</string>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">font-weight: bold; margin-top: 10px;</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="comboBox_comPort">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>35</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_serial">
-        <property name="text">
-         <string>PCB Serial Number:</string>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">font-weight: bold; margin-top: 10px;</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="lineEdit_pcbSerial">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>35</height>
-         </size>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-        <property name="placeholderText">
-         <string>Auto-detected via QR</string>
-        </property>
-       </widget>
-      </item>
 
-      <item>
-       <spacer name="verticalSpacer_controls">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
+     <!-- Group 1: Project -->
+     <item>
+        <widget class="QLabel" name="label_project">
+            <property name="text">
+                <string>Select Project:</string>
+            </property>
+            <property name="styleSheet">
+                <string notr="true">font-weight: bold;</string>
+            </property>
+        </widget>
+     </item>
+     <item>
+        <widget class="QComboBox" name="comboBox_projects">
+            <property name="minimumSize">
+                <size>
+                    <width>250</width>
+                    <height>35</height>
+                </size>
+            </property>
+        </widget>
+     </item>
 
-      <item>
-       <widget class="QPushButton" name="pushButton_start">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>50</height>
-         </size>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">background-color: #28a745; color: white; font-size: 14pt; font-weight: bold;</string>
-        </property>
-        <property name="text">
-         <string>START TEST</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_stop">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">background-color: #dc3545; color: white; font-weight: bold; margin-top: 10px;</string>
-        </property>
-        <property name="text">
-         <string>STOP</string>
-        </property>
-       </widget>
-      </item>
+     <item>
+      <spacer name="horizontalSpacer_1">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
 
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_btns">
-        <item>
-         <widget class="QPushButton" name="pushButton_runOne">
-          <property name="text">
-           <string>Run Selected</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="pushButton_reset">
-          <property name="text">
-           <string>Reset Table</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
+     <!-- Group 2: Serial -->
+     <item>
+        <widget class="QLabel" name="label_serial">
+            <property name="text">
+                <string>PCB Serial Number:</string>
+            </property>
+            <property name="styleSheet">
+                <string notr="true">font-weight: bold;</string>
+            </property>
+        </widget>
+     </item>
+     <item>
+        <widget class="QLineEdit" name="lineEdit_pcbSerial">
+            <property name="minimumSize">
+                <size>
+                    <width>200</width>
+                    <height>35</height>
+                </size>
+            </property>
+            <property name="readOnly">
+                <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+                <string>Auto-detected via QR</string>
+            </property>
+        </widget>
+     </item>
 
-     </layout>
-    </widget>
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+
+     <!-- Group 3: COM -->
+     <item>
+        <widget class="QLabel" name="label_com">
+            <property name="text">
+                <string>COM Port:</string>
+            </property>
+            <property name="styleSheet">
+                <string notr="true">font-weight: bold;</string>
+            </property>
+        </widget>
+     </item>
+     <item>
+        <widget class="QComboBox" name="comboBox_comPort">
+            <property name="minimumSize">
+                <size>
+                    <width>150</width>
+                    <height>35</height>
+                </size>
+            </property>
+        </widget>
+     </item>
+
+     <item>
+      <spacer name="horizontalSpacer_end">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+
+    </layout>
    </item>
 
-   <!-- RIGHT PANEL: TABLE -->
+   <!-- MIDDLE SECTION: Table -->
    <item>
     <widget class="QTableWidget" name="tableWidget_results">
      <property name="columnCount">
@@ -176,72 +160,105 @@
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
      </attribute>
-     <column>
-      <property name="text">
-       <string>Description</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>R</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Y</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>B</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>N</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Exp V</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Exp I</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Act R-V</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Act Y-V</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Act B-V</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Meas V</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Meas I</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Result</string>
-      </property>
-     </column>
+     <!-- Columns preserved from original -->
+     <column><property name="text"><string>Description</string></property></column>
+     <column><property name="text"><string>R</string></property></column>
+     <column><property name="text"><string>Y</string></property></column>
+     <column><property name="text"><string>B</string></property></column>
+     <column><property name="text"><string>N</string></property></column>
+     <column><property name="text"><string>Exp V</string></property></column>
+     <column><property name="text"><string>Exp I</string></property></column>
+     <column><property name="text"><string>Act R-V</string></property></column>
+     <column><property name="text"><string>Act Y-V</string></property></column>
+     <column><property name="text"><string>Act B-V</string></property></column>
+     <column><property name="text"><string>Meas V</string></property></column>
+     <column><property name="text"><string>Meas I</string></property></column>
+     <column><property name="text"><string>Result</string></property></column>
     </widget>
+   </item>
+
+   <!-- BOTTOM SECTION: Buttons -->
+   <item>
+    <layout class="QHBoxLayout" name="bottomLayout">
+     <property name="spacing">
+      <number>15</number>
+     </property>
+
+     <item>
+      <widget class="QPushButton" name="pushButton_start">
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>50</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: #28a745; color: white; font-size: 14pt; font-weight: bold;</string>
+       </property>
+       <property name="text">
+        <string>START TEST</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_stop">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>50</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: #dc3545; color: white; font-weight: bold; font-size: 12pt;</string>
+       </property>
+       <property name="text">
+        <string>STOP</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+        <widget class="QPushButton" name="pushButton_runOne">
+            <property name="text">
+                <string>Run Selected</string>
+            </property>
+             <property name="minimumSize">
+              <size>
+               <width>120</width>
+               <height>40</height>
+              </size>
+             </property>
+        </widget>
+     </item>
+     <item>
+        <widget class="QPushButton" name="pushButton_reset">
+            <property name="text">
+                <string>Reset Table</string>
+            </property>
+             <property name="minimumSize">
+              <size>
+               <width>120</width>
+               <height>40</height>
+              </size>
+             </property>
+        </widget>
+     </item>
+
+     <item>
+      <spacer name="horizontalSpacer_bottom">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+
+    </layout>
    </item>
   </layout>
  </widget>
