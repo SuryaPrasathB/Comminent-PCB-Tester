@@ -1,7 +1,7 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from login_window import LoginWindow
-from main_window import MainWindow
+from new_ui.login_window import LoginWindow
+from new_ui.main_window import MainWindow
 from db_utils import create_tables
 
 from logs import logger
