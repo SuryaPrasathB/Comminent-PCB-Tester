@@ -1,6 +1,5 @@
 /.idea
 /.venv
 /logs
-/__pycache__
+__pycache__
 *.pyc
-/new_ui/__pycache__
