@@ -624,12 +624,13 @@ class ProjectConfigView(QWidget):
                     """)
                 else:
                     # Generic container (like for CheckBox)
+                    # User request: Checkbox should remain black even when selected
                     widget.setStyleSheet(f"""
                         QWidget {{
                             background-color: {bg};
                         }}
                         QCheckBox {{
-                            color: {color};
+                            color: black;
                         }}
                     """)
 
