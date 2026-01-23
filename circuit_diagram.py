@@ -1,4 +1,5 @@
 import io
+import re
 import schemdraw
 import schemdraw.elements as elm
 import schemdraw.flow as flow
@@ -188,34 +189,38 @@ def generate_three_phase_diagram(
     )
 
     # =================================================
-    # RENDER TO MEMORY (UI SAFE)
+    # RENDER TO MEMORY (UI SAFE) - SVG
     # =================================================
-    # Generate SVG data
-    svg_bytes = d.get_imagedata("svg")
+    # Use get_imagedata for direct bytes access (avoids file/path issues)
+    data = d.get_imagedata("svg")
 
-    # Decode to string for manipulation
-    svg_str = svg_bytes.decode("utf-8")
+    # Enforce centering and aspect ratio if not present
+    if b"preserveAspectRatio" not in data:
+        data = data.replace(b"<svg ", b'<svg preserveAspectRatio="xMidYMid meet" ')
 
-    # Post-process SVG to ensure responsiveness and centering
-    # Use regex to find the opening <svg ...> tag to avoid modifying child elements like <rect width="...">
-    import re
-    match = re.search(r'<svg[^>]*>', svg_str)
-    if match:
-        tag = match.group(0)
+    # -------------------------------------------------
+    # FIX: Remove fixed width/height to allow scaling
+    # -------------------------------------------------
+    # Schemdraw outputs fixed pt sizes (e.g. width="548pt").
+    # We replace them with 100% so QSvgWidget scales it to fill the container.
+    try:
+        s_data = data.decode("utf-8")
+        # Replace first occurrence of width="..." and height="..." inside the svg tag
+        # Note: We do this safely by targeting the SVG tag specifically if possible,
+        # but a simple global replace for the first occurrence is usually safe for the root tag.
 
-        # Ensure preserveAspectRatio is present
-        if "preserveAspectRatio" not in tag:
-            # We insert it after the opening <svg part
-            # A safe way is to replace "<svg" with "<svg preserveAspectRatio='...'"
-            # taking care if attributes follow immediately.
-            new_tag = tag.replace("<svg", '<svg preserveAspectRatio="xMidYMid meet"', 1)
-        else:
-            new_tag = tag
+        # Regex to find width="..." and height="..." and replace with 100%
+        # We only want to replace them in the root <svg ...> tag, not in inner elements.
+        # But schemdraw usually only puts them in the root.
 
-        # Replace the old tag with the new tag in the SVG string
-        svg_str = svg_str.replace(tag, new_tag, 1)
+        # Using regex to match attributes
+        s_data = re.sub(r'(<svg[^>]*)\s+width="[^"]+"', r'\1 width="100%"', s_data, count=1)
+        s_data = re.sub(r'(<svg[^>]*)\s+height="[^"]+"', r'\1 height="100%"', s_data, count=1)
 
-    data = svg_str.encode("utf-8")
+        data = s_data.encode("utf-8")
+    except Exception as e:
+        logger.error(f"Failed to patch SVG width/height: {e}")
+
     print(f"[CD] SVG bytes generated: {len(data)}")
 
     logger.info(f"Three-phase diagram rendered | SVG bytes={len(data)}")

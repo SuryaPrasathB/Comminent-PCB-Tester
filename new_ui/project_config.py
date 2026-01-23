@@ -1,12 +1,12 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QCheckBox, QComboBox, QMessageBox,
-    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout, QSizePolicy
+    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout,
+    QSizePolicy
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import QFile, QIODevice, Qt, QEvent
-from PySide6.QtGui import QPixmap, QPainter
+from PySide6.QtCore import QFile, QIODevice, Qt, QByteArray
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
 from db_utils import save_project, load_projects, load_project_rows, delete_project
@@ -36,7 +36,7 @@ class ProjectConfigView(QWidget):
         self.setup_icons()
         self.connect_signals()
         
-        # State for resizing
+        # State
         self.current_diagram_svg = None
 
         # Initial Population
@@ -45,13 +45,6 @@ class ProjectConfigView(QWidget):
         
         # Table Header Config
         self.configure_table_headers()
-
-    def update_diagram(self):
-        if not self.current_diagram_svg: return
-        try:
-            self.svg_circuit.load(self.current_diagram_svg)
-        except Exception as e:
-            logger.error(f"Error loading SVG diagram: {e}")
 
     def load_ui(self):
         loader = QUiLoader()
@@ -76,33 +69,34 @@ class ProjectConfigView(QWidget):
         self.txt_project = self.findChild(QWidget, "lineEdit_projectName")
         self.cmb_projects = self.findChild(QWidget, "comboBox_projects")
         
-        # Replace QLabel with QSvgWidget
-        self.lbl_circuit = self.findChild(QWidget, "label_circuitDiagram")
-        if self.lbl_circuit:
-            parent = self.lbl_circuit.parentWidget()
-            layout = parent.layout()
-            if layout:
-                # Create a container to center the diagram
-                self.circuit_container = QWidget()
-                container_layout = QVBoxLayout(self.circuit_container)
-                container_layout.setContentsMargins(0, 0, 0, 0)
-                # Removed AlignCenter to allow the widget to expand horizontally;
-                # SVG's preserveAspectRatio="xMidYMid meet" handles the actual centering/aspect ratio.
+        # REPLACEMENT: Swap QLabel with QSvgWidget
+        # 1. Find the placeholder label
+        lbl_placeholder = self.findChild(QWidget, "label_circuitDiagram")
 
-                self.svg_circuit = AntialiasedSvgWidget()
-                # Use Preferred size policy so it respects SVG size hint but can shrink/grow slightly if needed
-                # However, with AlignCenter in layout, it should stick to its size hint or available space.
-                self.svg_circuit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        if lbl_placeholder:
+            # 2. Get its parent widget and layout
+            # The label is likely inside 'widget_diagram_container' -> 'verticalLayout_diagram'
+            parent_widget = lbl_placeholder.parent()
+            parent_layout = parent_widget.layout() if parent_widget else None
 
-                container_layout.addWidget(self.svg_circuit)
+            if parent_layout:
+                # 3. Create the QSvgWidget
+                self.svg_circuit = QSvgWidget()
+                self.svg_circuit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-                # Replace the widget in-place to preserve layout order
-                layout.replaceWidget(self.lbl_circuit, self.circuit_container)
-                self.lbl_circuit.deleteLater()
+                # 4. Replace widget in layout
+                index = parent_layout.indexOf(lbl_placeholder)
+                parent_layout.removeWidget(lbl_placeholder)
+                lbl_placeholder.deleteLater()
+
+                # 5. Insert QSvgWidget centered
+                parent_layout.insertWidget(index, self.svg_circuit, 0, Qt.AlignCenter)
             else:
-                logger.error("Could not find layout for circuit label")
+                logger.error("Could not find layout for label_circuitDiagram")
+                self.svg_circuit = None
         else:
-            logger.error("Could not find label_circuitDiagram")
+             logger.warning("label_circuitDiagram not found in UI")
+             self.svg_circuit = None
 
         self.btn_save = self.findChild(QWidget, "pushButton_save")
         self.btn_delete = self.findChild(QWidget, "pushButton_delete")
@@ -375,9 +369,9 @@ class ProjectConfigView(QWidget):
             dc_i = float(idc) if idc else 0.0
 
             svg_data = generate_three_phase_diagram(r, y, b, n, dc_v, dc_i)
-            if svg_data:
+            if svg_data and self.svg_circuit:
                 self.current_diagram_svg = svg_data
-                self.update_diagram()
+                self.svg_circuit.load(QByteArray(svg_data))
 
         except Exception as e:
             logger.error(f"Diagram error: {e}")
