@@ -5,8 +5,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import QFile, QIODevice, Qt, QEvent
-from PySide6.QtGui import QPixmap, QPainter
+from PySide6.QtCore import QFile, QIODevice, Qt, QEvent, QPoint
+from PySide6.QtGui import QPixmap, QPainter, QMouseEvent
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
 from db_utils import save_project, load_projects, load_project_rows, delete_project
@@ -18,6 +18,240 @@ from new_ui.icons import IconHelper
 class NoWheelComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()
+
+class DraggableComboBox(NoWheelComboBox):
+    def __init__(self, table):
+        super().__init__()
+        self.table = table
+        self.start_pos = None
+        self.drag_active = False
+        self.pending_bulk = False
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.start_pos = event.pos()
+
+            current_row = self._get_row()
+            if current_row >= 0:
+                self.table.setCurrentCell(current_row, self._get_col())
+
+            modifiers = event.modifiers()
+
+            if modifiers & Qt.ControlModifier:
+                item = self.table.item(current_row, 0)
+                # Toggle selection state
+                item.setSelected(not item.isSelected())
+            elif modifiers & Qt.ShiftModifier:
+                start = self.table.currentRow()
+                end = current_row
+                step = 1 if end > start else -1
+                if start == -1:
+                    self.table.selectRow(current_row)
+                else:
+                    self.table.clearSelection()
+                    for r in range(start, end + step, step):
+                        self.table.selectRow(r)
+            else:
+                # If not holding modifiers, ensure current row is selected (Click behavior)
+                # unless it's already selected (to allow drag start on selection)
+                item = self.table.item(current_row, 0)
+                if item and not item.isSelected():
+                    self.table.clearSelection()
+                    self.table.selectRow(current_row)
+
+            # If we just click, we want the popup. But we wait for release to confirm it's not a drag.
+            # We accept the event so parent doesn't handle it yet.
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self.start_pos:
+            if (event.pos() - self.start_pos).manhattanLength() > 5:
+                if not self.drag_active:
+                    self.drag_active = True
+                    self.grabMouse()
+
+        if self.drag_active:
+            # Select rows under cursor
+            pos = self.table.viewport().mapFromGlobal(event.globalPos())
+            idx = self.table.indexAt(pos)
+            if idx.isValid():
+                self.table.selectRow(idx.row())
+
+    def mouseReleaseEvent(self, event):
+        if self.drag_active:
+            self.drag_active = False
+            self.releaseMouse()
+            self.start_pos = None
+
+            # Find target widget under mouse
+            pos = self.table.viewport().mapFromGlobal(event.globalPos())
+            idx = self.table.indexAt(pos)
+
+            target_widget = self
+            if idx.isValid():
+                w = self.table.cellWidget(idx.row(), idx.column())
+                if isinstance(w, DraggableComboBox):
+                    target_widget = w
+
+            # Prepare for bulk update
+            target_widget.pending_bulk = True
+
+            # Safely connect signal (disconnect old if exists to avoid dupes)
+            try:
+                target_widget.activated.disconnect(target_widget._on_bulk_activated)
+            except: pass
+            target_widget.activated.connect(target_widget._on_bulk_activated)
+
+            target_widget.showPopup()
+
+        else:
+            # Normal click
+            self.start_pos = None
+            self.showPopup()
+
+    def _on_bulk_activated(self, index):
+        if self.pending_bulk:
+            val = self.currentText()
+            col = self._get_col()
+            # Apply to all selected rows
+            selected_rows = set()
+            for item in self.table.selectedItems():
+                selected_rows.add(item.row())
+
+            current_row = self.table.currentRow()
+
+            for r in selected_rows:
+                w = self.table.cellWidget(r, col)
+                if isinstance(w, QComboBox):
+                    if r == current_row:
+                        # Allow signal to fire for the current row so the diagram updates once
+                        w.setCurrentText(val)
+                    else:
+                        # Block signals for others to prevent redundant updates
+                        w.blockSignals(True)
+                        w.setCurrentText(val)
+                        w.blockSignals(False)
+
+            self.pending_bulk = False
+
+    def hidePopup(self):
+        super().hidePopup()
+        self.pending_bulk = False
+
+    def _get_row(self):
+        pos = self.table.viewport().mapFromGlobal(self.mapToGlobal(QPoint(0,0)))
+        idx = self.table.indexAt(pos)
+        return idx.row() if idx.isValid() else -1
+
+    def _get_col(self):
+        pos = self.table.viewport().mapFromGlobal(self.mapToGlobal(QPoint(0,0)))
+        idx = self.table.indexAt(pos)
+        return idx.column() if idx.isValid() else -1
+
+class DraggableCheckboxContainer(QWidget):
+    def __init__(self, table):
+        super().__init__()
+        self.table = table
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignCenter)
+
+        self.checkbox = QCheckBox()
+        self.checkbox.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.checkbox.setFocusPolicy(Qt.NoFocus)
+        layout.addWidget(self.checkbox)
+
+        self.drag_active = False
+        self.target_state = False
+
+    def isChecked(self):
+        return self.checkbox.isChecked()
+
+    def setChecked(self, state):
+        self.checkbox.setChecked(state)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.target_state = not self.checkbox.isChecked()
+            self.checkbox.setChecked(self.target_state)
+
+            # Handle selection & bulk update
+            current_row = self._get_row()
+            if current_row >= 0:
+                self.table.setCurrentCell(current_row, 1)
+
+            modifiers = event.modifiers()
+            if modifiers & Qt.ControlModifier:
+                item = self.table.item(current_row, 0)
+                item.setSelected(not item.isSelected())
+            elif modifiers & Qt.ShiftModifier:
+                start = self.table.currentRow()
+                end = current_row
+                step = 1 if end > start else -1
+                # If start is -1 (no selection), just select current
+                if start == -1:
+                    self.table.selectRow(current_row)
+                else:
+                    # We usually want to extend the selection, not clear and select new range?
+                    # Standard Shift behavior: Extends from anchor.
+                    # QTableWidget handles this well internally, but we are hijacking.
+                    # For simplicity: Clear and select range? Or just Add range?
+                    # Standard is: clear others, select range.
+                    self.table.clearSelection()
+                    for r in range(start, end + step, step):
+                        self.table.selectRow(r)
+            else:
+                # If row not selected, select it exclusive
+                item = self.table.item(current_row, 0)
+                if item and not item.isSelected():
+                    self.table.clearSelection()
+                    self.table.selectRow(current_row)
+
+            # Apply to all selected rows
+            selected_rows = [i.row() for i in self.table.selectedItems() if i.column() == 0]
+            if current_row not in selected_rows:
+                selected_rows.append(current_row)
+                self.table.selectRow(current_row)
+
+            for r in selected_rows:
+                self._update_row_checkbox(r, self.target_state)
+
+            self.drag_active = True
+            self.grabMouse()
+
+    def mouseMoveEvent(self, event):
+        if self.drag_active:
+            # Map global pos to viewport
+            pos = self.table.viewport().mapFromGlobal(event.globalPos())
+            idx = self.table.indexAt(pos)
+            if idx.isValid():
+                r = idx.row()
+                # Select and update
+                if not self.table.item(r, 0).isSelected():
+                    self.table.selectRow(r)
+                self._update_row_checkbox(r, self.target_state)
+
+    def mouseReleaseEvent(self, event):
+        if self.drag_active:
+            self.drag_active = False
+            self.releaseMouse()
+            # Force circuit update if current row changed
+            # We can cheat and trigger the selection signal logic again?
+            # Or assume the user is done. The on_row_selected is connected to selection change.
+            # If selection changed during drag, on_row_selected was called.
+            # But we might want to ensure the final state is consistent.
+            pass
+
+    def _get_row(self):
+        pos = self.table.viewport().mapFromGlobal(self.mapToGlobal(QPoint(0,0)))
+        idx = self.table.indexAt(pos)
+        return idx.row() if idx.isValid() else -1
+
+    def _update_row_checkbox(self, row, state):
+        widget = self.table.cellWidget(row, 1)
+        if isinstance(widget, DraggableCheckboxContainer):
+            widget.setChecked(state)
 
 class AntialiasedSvgWidget(QSvgWidget):
     def paintEvent(self, event):
@@ -111,7 +345,7 @@ class ProjectConfigView(QWidget):
 
         # Table Config
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.verticalHeader().setVisible(False)
         
         # Row highlighting style
@@ -152,6 +386,7 @@ class ProjectConfigView(QWidget):
         self.btn_delete.clicked.connect(self.delete_current_project)
         self.cmb_projects.currentIndexChanged.connect(self.load_selected_project)
         self.table.itemSelectionChanged.connect(self.on_row_selected)
+        self.table.itemSelectionChanged.connect(self.update_widget_highlights)
 
     # =========================================================================
     # LOGIC (Ported)
@@ -180,14 +415,8 @@ class ProjectConfigView(QWidget):
             self.table.setItem(row, 0, sn)
 
             # Enable Checkbox (Centered)
-            chk = QCheckBox()
-            chk.setChecked(tc.get("enabled", True))
-            
-            chk_widget = QWidget()
-            chk_layout = QHBoxLayout(chk_widget)
-            chk_layout.addWidget(chk)
-            chk_layout.setAlignment(Qt.AlignCenter)
-            chk_layout.setContentsMargins(0,0,0,0)
+            chk_widget = DraggableCheckboxContainer(self.table)
+            chk_widget.setChecked(tc.get("enabled", True))
             self.table.setCellWidget(row, 1, chk_widget)
 
             # Desc
@@ -208,7 +437,7 @@ class ProjectConfigView(QWidget):
         self._renumber_serials()
 
     def _set_combo(self, row, col, values, current):
-        combo = NoWheelComboBox()
+        combo = DraggableComboBox(self.table)
         combo.addItems(values)
         combo.setCurrentText(current)
         combo.currentTextChanged.connect(self.on_combo_changed)
@@ -357,6 +586,58 @@ class ProjectConfigView(QWidget):
             self.refresh_projects()
             self.txt_project.clear()
             self.populate_test_table(default_test_cases)
+
+    def update_widget_highlights(self):
+        """Updates the background/text color of cell widgets based on row selection."""
+        rows = self.table.rowCount()
+        for r in range(rows):
+            # Check if row is selected by checking the first item
+            item = self.table.item(r, 0)
+            is_sel = item.isSelected() if item else False
+
+            bg = "#0078d7" if is_sel else "transparent"
+            color = "white" if is_sel else "black"
+            font_weight = "bold" if is_sel else "normal"
+
+            # Helper to style widgets
+            def apply_style(widget, is_combo=False):
+                if not widget: return
+                if is_combo:
+                    # Preserve specific styling for combos (hide arrow, etc)
+                    widget.setStyleSheet(f"""
+                        QComboBox {{
+                            border: none;
+                            padding-left: 2px;
+                            background-color: {bg};
+                            color: {color};
+                            font-weight: {font_weight};
+                        }}
+                        QComboBox::drop-down {{
+                            border: none;
+                            width: 0px;
+                        }}
+                        QComboBox QAbstractItemView {{
+                            color: black;
+                            background-color: white;
+                            selection-background-color: #0078d7;
+                        }}
+                    """)
+                else:
+                    # Generic container (like for CheckBox)
+                    widget.setStyleSheet(f"""
+                        QWidget {{
+                            background-color: {bg};
+                        }}
+                        QCheckBox {{
+                            color: {color};
+                        }}
+                    """)
+
+            apply_style(self.table.cellWidget(r, 1), is_combo=False)
+            apply_style(self.table.cellWidget(r, 3), is_combo=True)
+            apply_style(self.table.cellWidget(r, 4), is_combo=True)
+            apply_style(self.table.cellWidget(r, 5), is_combo=True)
+            apply_style(self.table.cellWidget(r, 6), is_combo=True)
 
     def on_row_selected(self):
         row = self.table.currentRow()
