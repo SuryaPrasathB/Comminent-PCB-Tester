@@ -73,12 +73,12 @@ class ProjectConfigView(QWidget):
             parent = self.lbl_circuit.parentWidget()
             layout = parent.layout()
             if layout:
-                layout.removeWidget(self.lbl_circuit)
-                self.lbl_circuit.deleteLater()
-
                 self.svg_circuit = QSvgWidget()
                 self.svg_circuit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-                layout.addWidget(self.svg_circuit)
+
+                # Replace the widget in-place to preserve layout order
+                layout.replaceWidget(self.lbl_circuit, self.svg_circuit)
+                self.lbl_circuit.deleteLater()
             else:
                 logger.error("Could not find layout for circuit label")
         else:
