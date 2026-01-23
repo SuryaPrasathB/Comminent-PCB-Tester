@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import QFile, QIODevice, Qt, QEvent
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QPainter
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
 from db_utils import save_project, load_projects, load_project_rows, delete_project
@@ -18,6 +18,15 @@ from new_ui.icons import IconHelper
 class NoWheelComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()
+
+class AntialiasedSvgWidget(QSvgWidget):
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.renderer().render(painter)
+        painter.end()
 
 class ProjectConfigView(QWidget):
     def __init__(self):
@@ -73,11 +82,22 @@ class ProjectConfigView(QWidget):
             parent = self.lbl_circuit.parentWidget()
             layout = parent.layout()
             if layout:
-                self.svg_circuit = QSvgWidget()
-                self.svg_circuit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                # Create a container to center the diagram
+                self.circuit_container = QWidget()
+                container_layout = QVBoxLayout(self.circuit_container)
+                container_layout.setContentsMargins(0, 0, 0, 0)
+                # Removed AlignCenter to allow the widget to expand horizontally;
+                # SVG's preserveAspectRatio="xMidYMid meet" handles the actual centering/aspect ratio.
+
+                self.svg_circuit = AntialiasedSvgWidget()
+                # Use Preferred size policy so it respects SVG size hint but can shrink/grow slightly if needed
+                # However, with AlignCenter in layout, it should stick to its size hint or available space.
+                self.svg_circuit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
+                container_layout.addWidget(self.svg_circuit)
 
                 # Replace the widget in-place to preserve layout order
-                layout.replaceWidget(self.lbl_circuit, self.svg_circuit)
+                layout.replaceWidget(self.lbl_circuit, self.circuit_container)
                 self.lbl_circuit.deleteLater()
             else:
                 logger.error("Could not find layout for circuit label")

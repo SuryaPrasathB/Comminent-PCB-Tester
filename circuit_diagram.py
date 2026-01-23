@@ -203,13 +203,14 @@ def generate_three_phase_diagram(
     if match:
         tag = match.group(0)
 
-        # Replace width/height only inside the opening tag
-        new_tag = re.sub(r'width="[^"]+"', 'width="100%"', tag)
-        new_tag = re.sub(r'height="[^"]+"', 'height="100%"', new_tag)
-
         # Ensure preserveAspectRatio is present
-        if "preserveAspectRatio" not in new_tag:
-            new_tag = new_tag.replace("<svg ", '<svg preserveAspectRatio="xMidYMid meet" ')
+        if "preserveAspectRatio" not in tag:
+            # We insert it after the opening <svg part
+            # A safe way is to replace "<svg" with "<svg preserveAspectRatio='...'"
+            # taking care if attributes follow immediately.
+            new_tag = tag.replace("<svg", '<svg preserveAspectRatio="xMidYMid meet"', 1)
+        else:
+            new_tag = tag
 
         # Replace the old tag with the new tag in the SVG string
         svg_str = svg_str.replace(tag, new_tag, 1)
