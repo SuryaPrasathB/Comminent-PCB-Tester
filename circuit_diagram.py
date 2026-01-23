@@ -1,4 +1,5 @@
 import io
+import re
 import schemdraw
 import schemdraw.elements as elm
 import schemdraw.flow as flow
@@ -188,15 +189,40 @@ def generate_three_phase_diagram(
     )
 
     # =================================================
-    # RENDER TO MEMORY (UI SAFE)
+    # RENDER TO MEMORY (UI SAFE) - SVG
     # =================================================
-    buffer = io.BytesIO()
-    d.save(buffer, "png", dpi=300)
-    buffer.seek(0)
+    # Use get_imagedata for direct bytes access (avoids file/path issues)
+    data = d.get_imagedata("svg")
 
-    data = buffer.read()
-    print(f"[CD] PNG bytes generated: {len(data)}")
+    # Enforce centering and aspect ratio if not present
+    if b"preserveAspectRatio" not in data:
+        data = data.replace(b"<svg ", b'<svg preserveAspectRatio="xMidYMid meet" ')
 
-    logger.info(f"Three-phase diagram rendered | PNG bytes={len(data)}")
+    # -------------------------------------------------
+    # FIX: Remove fixed width/height to allow scaling
+    # -------------------------------------------------
+    # Schemdraw outputs fixed pt sizes (e.g. width="548pt").
+    # We replace them with 100% so QSvgWidget scales it to fill the container.
+    try:
+        s_data = data.decode("utf-8")
+        # Replace first occurrence of width="..." and height="..." inside the svg tag
+        # Note: We do this safely by targeting the SVG tag specifically if possible,
+        # but a simple global replace for the first occurrence is usually safe for the root tag.
+
+        # Regex to find width="..." and height="..." and replace with 100%
+        # We only want to replace them in the root <svg ...> tag, not in inner elements.
+        # But schemdraw usually only puts them in the root.
+
+        # Using regex to match attributes
+        s_data = re.sub(r'(<svg[^>]*)\s+width="[^"]+"', r'\1 width="100%"', s_data, count=1)
+        s_data = re.sub(r'(<svg[^>]*)\s+height="[^"]+"', r'\1 height="100%"', s_data, count=1)
+
+        data = s_data.encode("utf-8")
+    except Exception as e:
+        logger.error(f"Failed to patch SVG width/height: {e}")
+
+    print(f"[CD] SVG bytes generated: {len(data)}")
+
+    logger.info(f"Three-phase diagram rendered | SVG bytes={len(data)}")
 
     return data
