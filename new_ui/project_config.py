@@ -1,9 +1,10 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QCheckBox, QComboBox, QMessageBox,
-    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout
+    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout, QSizePolicy
 )
 from PySide6.QtUiTools import QUiLoader
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import QFile, QIODevice, Qt, QEvent
 from PySide6.QtGui import QPixmap
 
@@ -27,8 +28,7 @@ class ProjectConfigView(QWidget):
         self.connect_signals()
         
         # State for resizing
-        self.current_diagram_png = None
-        self.lbl_circuit.installEventFilter(self)
+        self.current_diagram_svg = None
 
         # Initial Population
         self.refresh_projects()
@@ -37,21 +37,12 @@ class ProjectConfigView(QWidget):
         # Table Header Config
         self.configure_table_headers()
 
-    def eventFilter(self, source, event):
-        if source == self.lbl_circuit and event.type() == QEvent.Resize:
-            if self.current_diagram_png:
-                self.update_diagram_pixmap()
-        return super().eventFilter(source, event)
-    
-    def update_diagram_pixmap(self):
-        if not self.current_diagram_png: return
+    def update_diagram(self):
+        if not self.current_diagram_svg: return
         try:
-            pix = QPixmap()
-            pix.loadFromData(self.current_diagram_png)
-            if not pix.isNull():
-                self.lbl_circuit.setPixmap(pix.scaled(self.lbl_circuit.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.svg_circuit.load(self.current_diagram_svg)
         except Exception as e:
-            logger.error(f"Error resizing pixmap: {e}")
+            logger.error(f"Error loading SVG diagram: {e}")
 
     def load_ui(self):
         loader = QUiLoader()
@@ -75,11 +66,23 @@ class ProjectConfigView(QWidget):
         self.table = self.findChild(QWidget, "tableWidget_testCases")
         self.txt_project = self.findChild(QWidget, "lineEdit_projectName")
         self.cmb_projects = self.findChild(QWidget, "comboBox_projects")
-        self.lbl_circuit = self.findChild(QWidget, "label_circuitDiagram")
         
-        # Ensure label has no fixed size constraint that pushes layout
-        # (Though we handled this in UI, doing it here is safe too)
-        # self.lbl_circuit.setScaledContents(False) # Default
+        # Replace QLabel with QSvgWidget
+        self.lbl_circuit = self.findChild(QWidget, "label_circuitDiagram")
+        if self.lbl_circuit:
+            parent = self.lbl_circuit.parentWidget()
+            layout = parent.layout()
+            if layout:
+                layout.removeWidget(self.lbl_circuit)
+                self.lbl_circuit.deleteLater()
+
+                self.svg_circuit = QSvgWidget()
+                self.svg_circuit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                layout.addWidget(self.svg_circuit)
+            else:
+                logger.error("Could not find layout for circuit label")
+        else:
+            logger.error("Could not find label_circuitDiagram")
 
         self.btn_save = self.findChild(QWidget, "pushButton_save")
         self.btn_delete = self.findChild(QWidget, "pushButton_delete")
@@ -351,10 +354,10 @@ class ProjectConfigView(QWidget):
             idc = self.table.item(row, 8).text().replace("A","").strip()
             dc_i = float(idc) if idc else 0.0
 
-            png = generate_three_phase_diagram(r, y, b, n, dc_v, dc_i)
-            if png:
-                self.current_diagram_png = png
-                self.update_diagram_pixmap()
+            svg_data = generate_three_phase_diagram(r, y, b, n, dc_v, dc_i)
+            if svg_data:
+                self.current_diagram_svg = svg_data
+                self.update_diagram()
 
         except Exception as e:
             logger.error(f"Diagram error: {e}")

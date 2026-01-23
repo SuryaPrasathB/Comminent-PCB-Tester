@@ -190,13 +190,26 @@ def generate_three_phase_diagram(
     # =================================================
     # RENDER TO MEMORY (UI SAFE)
     # =================================================
-    buffer = io.BytesIO()
-    d.save(buffer, "png", dpi=300)
-    buffer.seek(0)
+    # Generate SVG data
+    svg_bytes = d.get_imagedata("svg")
 
-    data = buffer.read()
-    print(f"[CD] PNG bytes generated: {len(data)}")
+    # Decode to string for manipulation
+    svg_str = svg_bytes.decode("utf-8")
 
-    logger.info(f"Three-phase diagram rendered | PNG bytes={len(data)}")
+    # Post-process SVG to ensure responsiveness and centering
+    if "<svg" in svg_str:
+        import re
+        # Replace fixed width/height with 100%
+        svg_str = re.sub(r'width="[^"]+"', 'width="100%"', svg_str)
+        svg_str = re.sub(r'height="[^"]+"', 'height="100%"', svg_str)
+
+        # Add preserveAspectRatio if not present
+        if "preserveAspectRatio" not in svg_str:
+            svg_str = svg_str.replace("<svg ", '<svg preserveAspectRatio="xMidYMid meet" ')
+
+    data = svg_str.encode("utf-8")
+    print(f"[CD] SVG bytes generated: {len(data)}")
+
+    logger.info(f"Three-phase diagram rendered | SVG bytes={len(data)}")
 
     return data
