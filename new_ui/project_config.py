@@ -1,12 +1,11 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QCheckBox, QComboBox, QMessageBox,
-    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout,
-    QSizePolicy
+    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout
 )
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import QFile, QIODevice, Qt, QByteArray
+from PySide6.QtCore import QFile, QIODevice, Qt, QEvent
+from PySide6.QtGui import QPixmap
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
 from db_utils import save_project, load_projects, load_project_rows, delete_project
@@ -36,8 +35,9 @@ class ProjectConfigView(QWidget):
         self.setup_icons()
         self.connect_signals()
         
-        # State
-        self.current_diagram_svg = None
+        # State for resizing
+        self.current_diagram_png = None
+        self.lbl_circuit.installEventFilter(self)
 
         # Initial Population
         self.refresh_projects()
@@ -45,6 +45,22 @@ class ProjectConfigView(QWidget):
         
         # Table Header Config
         self.configure_table_headers()
+
+    def eventFilter(self, source, event):
+        if source == self.lbl_circuit and event.type() == QEvent.Resize:
+            if self.current_diagram_png:
+                self.update_diagram_pixmap()
+        return super().eventFilter(source, event)
+    
+    def update_diagram_pixmap(self):
+        if not self.current_diagram_png: return
+        try:
+            pix = QPixmap()
+            pix.loadFromData(self.current_diagram_png)
+            if not pix.isNull():
+                self.lbl_circuit.setPixmap(pix.scaled(self.lbl_circuit.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        except Exception as e:
+            logger.error(f"Error resizing pixmap: {e}")
 
     def load_ui(self):
         loader = QUiLoader()
@@ -68,35 +84,11 @@ class ProjectConfigView(QWidget):
         self.table = self.findChild(QWidget, "tableWidget_testCases")
         self.txt_project = self.findChild(QWidget, "lineEdit_projectName")
         self.cmb_projects = self.findChild(QWidget, "comboBox_projects")
+        self.lbl_circuit = self.findChild(QWidget, "label_circuitDiagram")
         
-        # REPLACEMENT: Swap QLabel with QSvgWidget
-        # 1. Find the placeholder label
-        lbl_placeholder = self.findChild(QWidget, "label_circuitDiagram")
-
-        if lbl_placeholder:
-            # 2. Get its parent widget and layout
-            # The label is likely inside 'widget_diagram_container' -> 'verticalLayout_diagram'
-            parent_widget = lbl_placeholder.parent()
-            parent_layout = parent_widget.layout() if parent_widget else None
-
-            if parent_layout:
-                # 3. Create the QSvgWidget
-                self.svg_circuit = QSvgWidget()
-                self.svg_circuit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-                # 4. Replace widget in layout
-                index = parent_layout.indexOf(lbl_placeholder)
-                parent_layout.removeWidget(lbl_placeholder)
-                lbl_placeholder.deleteLater()
-
-                # 5. Insert QSvgWidget centered
-                parent_layout.insertWidget(index, self.svg_circuit, 0, Qt.AlignCenter)
-            else:
-                logger.error("Could not find layout for label_circuitDiagram")
-                self.svg_circuit = None
-        else:
-             logger.warning("label_circuitDiagram not found in UI")
-             self.svg_circuit = None
+        # Ensure label has no fixed size constraint that pushes layout
+        # (Though we handled this in UI, doing it here is safe too)
+        # self.lbl_circuit.setScaledContents(False) # Default
 
         self.btn_save = self.findChild(QWidget, "pushButton_save")
         self.btn_delete = self.findChild(QWidget, "pushButton_delete")
@@ -368,10 +360,10 @@ class ProjectConfigView(QWidget):
             idc = self.table.item(row, 8).text().replace("A","").strip()
             dc_i = float(idc) if idc else 0.0
 
-            svg_data = generate_three_phase_diagram(r, y, b, n, dc_v, dc_i)
-            if svg_data and self.svg_circuit:
-                self.current_diagram_svg = svg_data
-                self.svg_circuit.load(QByteArray(svg_data))
+            png = generate_three_phase_diagram(r, y, b, n, dc_v, dc_i)
+            if png:
+                self.current_diagram_png = png
+                self.update_diagram_pixmap()
 
         except Exception as e:
             logger.error(f"Diagram error: {e}")
