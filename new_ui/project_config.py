@@ -374,8 +374,8 @@ class ProjectConfigView(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
 
     def setup_icons(self):
-        IconHelper.apply_icon(self.btn_save, "save", "white")
-        IconHelper.apply_icon(self.btn_delete, "delete", "white")
+        IconHelper.apply_icon(self.btn_save, "save", "black")
+        IconHelper.apply_icon(self.btn_delete, "delete", "black")
         IconHelper.apply_icon(self.btn_up, "arrow_up")
         IconHelper.apply_icon(self.btn_down, "arrow_down")
 
