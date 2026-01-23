@@ -97,7 +97,7 @@ def generate_three_phase_diagram(
     d.add(
         elm.Line()
         .right(2)
-        .at((0, -1.5))
+        .at((0, -1))
         .label("Y", loc="left", fontsize=PHASE_FONT)
         .label(fmt_ac_voltage(y_voltage), loc="top", fontsize=AC_VOLT_FONT)
     )
@@ -108,7 +108,7 @@ def generate_three_phase_diagram(
     d.add(
         elm.Line()
         .right(2)
-        .at((0, -3.0))
+        .at((0, -2))
         .label("B", loc="left", fontsize=PHASE_FONT)
         .label(fmt_ac_voltage(b_voltage), loc="top", fontsize=AC_VOLT_FONT)
     )
@@ -119,7 +119,7 @@ def generate_three_phase_diagram(
     d.add(
         elm.Line()
         .right(2)
-        .at((0, -4.5))
+        .at((0, -3))
         .label("N", loc="left", fontsize=PHASE_FONT)
     )
     d.add(elm.Switch(nc=(neutral_state != "NC")).right(1))
@@ -130,9 +130,9 @@ def generate_three_phase_diagram(
     # =================================================
     # PCB BLOCK
     # =================================================
-    d.add(flow.Box(w=3, h=6).at((5, -2.25)).label("PCB"))
+    d.add(flow.Box(w=3, h=4).at((5, -1.5)).label("PCB"))
 
-    for y, lbl in zip([0, -1.5, -3.0, -4.5], ["R", "Y", "B", "N"]):
+    for y, lbl in zip([0, -1, -2, -3], ["R", "Y", "B", "N"]):
         d.add(flow.Box(w=0.5, h=0.5).at((5, y)).label(lbl))
 
     logger.info("PCB block drawn")
@@ -140,14 +140,14 @@ def generate_three_phase_diagram(
     # =================================================
     # DC OUTPUT TERMINALS (+ / -)
     # =================================================
-    d.add(flow.Box(w=-0.5, h=0.5).at((8, -1.0)).label("+"))
-    d.add(flow.Box(w=-0.5, h=0.5).at((8, -3.5)).label("-"))
+    d.add(flow.Box(w=-0.5, h=0.5).at((8, -0.5)).label("+"))
+    d.add(flow.Box(w=-0.5, h=0.5).at((8, -2.5)).label("-"))
 
     # =================================================
     # DC RAILS TO LOAD (HORIZONTAL)
     # =================================================
-    d.add(elm.Line().right(3).at((8, -1.0)))    # + rail
-    d.add(elm.Line().right(3).at((8, -3.5)))    # - rail
+    d.add(elm.Line().right(3).at((8, -0.5)))    # + rail
+    d.add(elm.Line().right(3).at((8, -2.5)))    # - rail
 
     # =================================================
     # DC CURRENT INDICATOR (PLUG SYMBOL)
@@ -155,26 +155,26 @@ def generate_three_phase_diagram(
     d.add(
         elm.Plug()
         .scale(0.5)
-        .at((9.2, -1.0))
+        .at((9.2, -0.5))
     )
     d.add(
         elm.Label()
-        .at((9.5, -0.7))
+        .at((9.5, -0.2))
         .label(fmt_i(dc_current), fontsize=DC_CURR_FONT)
     )
 
     # =================================================
     # VERTICAL DROPS INTO LOAD
     # =================================================
-    d.add(elm.Line().down(0.45).at((11, -1.0)))
-    d.add(elm.Line().up(0.45).at((11, -3.5)))
+    d.add(elm.Line().down(0.2).at((11, -0.5)))
+    d.add(elm.Line().up(0.2).at((11, -2.5)))
 
     # =================================================
     # LOAD
     # =================================================
     d.add(
         flow.Box(w=0.5, h=1.5)
-        .at((11, -3))
+        .at((11, -2.25))
         .label("LOAD", rotate=90, fontsize=LOAD_FONT)
     )
 
@@ -183,7 +183,7 @@ def generate_three_phase_diagram(
     # =================================================
     d.add(
         elm.Label()
-        .at((11.9, -2.25))
+        .at((11.8, -1.5))
         .label(fmt_v(dc_voltage), fontsize=DC_VOLT_FONT)
     )
 

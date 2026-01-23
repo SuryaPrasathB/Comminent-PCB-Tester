@@ -18,15 +18,6 @@ class NoWheelComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()
 
-class AntialiasedSvgWidget(QSvgWidget):
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.TextAntialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-        self.renderer().render(painter)
-        painter.end()
-
 class ProjectConfigView(QWidget):
     def __init__(self):
         super().__init__()
