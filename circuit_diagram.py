@@ -166,15 +166,15 @@ def generate_three_phase_diagram(
     # =================================================
     # VERTICAL DROPS INTO LOAD
     # =================================================
-    d.add(elm.Line().down(0.2).at((11, -1.0)))
-    d.add(elm.Line().up(0.2).at((11, -3.5)))
+    d.add(elm.Line().down(0.45).at((11, -1.0)))
+    d.add(elm.Line().up(0.45).at((11, -3.5)))
 
     # =================================================
     # LOAD
     # =================================================
     d.add(
         flow.Box(w=0.5, h=1.5)
-        .at((11, -2.75))
+        .at((11, -3))
         .label("LOAD", rotate=90, fontsize=LOAD_FONT)
     )
 
@@ -183,7 +183,7 @@ def generate_three_phase_diagram(
     # =================================================
     d.add(
         elm.Label()
-        .at((11.8, -2.25))
+        .at((11.9, -2.25))
         .label(fmt_v(dc_voltage), fontsize=DC_VOLT_FONT)
     )
 
