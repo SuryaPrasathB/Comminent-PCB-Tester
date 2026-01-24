@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import QFile, QIODevice, Qt, QEvent, QPoint
+from PySide6.QtCore import QFile, QIODevice, Qt, QEvent, QPoint, QItemSelectionModel, QItemSelection
 from PySide6.QtGui import QPixmap, QPainter, QMouseEvent
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
@@ -30,30 +30,29 @@ class DraggableComboBox(NoWheelComboBox):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.start_pos = event.pos()
+            self.start_row = self._get_row()
 
-            current_row = self._get_row()
+            current_row = self.start_row
             if current_row >= 0:
                 self.table.setCurrentCell(current_row, self._get_col())
 
             modifiers = event.modifiers()
 
             if modifiers & Qt.ControlModifier:
-                item = self.table.item(current_row, 0)
-                # Toggle selection state
-                item.setSelected(not item.isSelected())
+                if current_row >= 0:
+                    model = self.table.selectionModel()
+                    idx = self.table.model().index(current_row, 0)
+                    model.select(idx, QItemSelectionModel.Toggle | QItemSelectionModel.Rows)
             elif modifiers & Qt.ShiftModifier:
-                start = self.table.currentRow()
-                end = current_row
-                step = 1 if end > start else -1
-                if start == -1:
-                    self.table.selectRow(current_row)
-                else:
-                    self.table.clearSelection()
-                    for r in range(start, end + step, step):
-                        self.table.selectRow(r)
+                # Range selection from anchor
+                anchor = self.table.currentRow() # This is the anchor usually
+                if anchor == -1: anchor = current_row
+
+                self._select_range(anchor, current_row)
             else:
-                # If not holding modifiers, ensure current row is selected (Click behavior)
-                # unless it's already selected (to allow drag start on selection)
+                # Normal click: Clear and select, BUT if we are starting a drag,
+                # we might want to keep selection if already selected?
+                # "Click behavior"
                 item = self.table.item(current_row, 0)
                 if item and not item.isSelected():
                     self.table.clearSelection()
@@ -69,13 +68,27 @@ class DraggableComboBox(NoWheelComboBox):
                 if not self.drag_active:
                     self.drag_active = True
                     self.grabMouse()
+                    # Initialize drag selection range
+                    if self.start_row >= 0:
+                        self.table.clearSelection()
+                        self.table.selectRow(self.start_row)
 
         if self.drag_active:
-            # Select rows under cursor
+            # Range Select from start_row to current_row
             pos = self.table.viewport().mapFromGlobal(event.globalPos())
             idx = self.table.indexAt(pos)
             if idx.isValid():
-                self.table.selectRow(idx.row())
+                current_row = idx.row()
+                if self.start_row >= 0:
+                    self._select_range(self.start_row, current_row)
+
+    def _select_range(self, start, end):
+        r_min, r_max = min(start, end), max(start, end)
+        selection = QItemSelection(
+            self.table.model().index(r_min, 0),
+            self.table.model().index(r_max, self.table.columnCount()-1)
+        )
+        self.table.selectionModel().select(selection, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
 
     def mouseReleaseEvent(self, event):
         if self.drag_active:
@@ -164,6 +177,7 @@ class DraggableCheckboxContainer(QWidget):
 
         self.drag_active = False
         self.target_state = False
+        self.last_drag_row = -1
 
     def isChecked(self):
         return self.checkbox.isChecked()
@@ -176,44 +190,39 @@ class DraggableCheckboxContainer(QWidget):
             self.target_state = not self.checkbox.isChecked()
             self.checkbox.setChecked(self.target_state)
 
-            # Handle selection & bulk update
             current_row = self._get_row()
             if current_row >= 0:
                 self.table.setCurrentCell(current_row, 1)
+                self.last_drag_row = current_row
 
             modifiers = event.modifiers()
             if modifiers & Qt.ControlModifier:
-                item = self.table.item(current_row, 0)
-                item.setSelected(not item.isSelected())
+                if current_row >= 0:
+                    model = self.table.selectionModel()
+                    idx = self.table.model().index(current_row, 0)
+                    model.select(idx, QItemSelectionModel.Toggle | QItemSelectionModel.Rows)
             elif modifiers & Qt.ShiftModifier:
-                start = self.table.currentRow()
-                end = current_row
-                step = 1 if end > start else -1
-                # If start is -1 (no selection), just select current
-                if start == -1:
-                    self.table.selectRow(current_row)
-                else:
-                    # We usually want to extend the selection, not clear and select new range?
-                    # Standard Shift behavior: Extends from anchor.
-                    # QTableWidget handles this well internally, but we are hijacking.
-                    # For simplicity: Clear and select range? Or just Add range?
-                    # Standard is: clear others, select range.
-                    self.table.clearSelection()
-                    for r in range(start, end + step, step):
-                        self.table.selectRow(r)
+                anchor = self.table.currentRow()
+                if anchor == -1: anchor = current_row
+                self._select_range(anchor, current_row)
             else:
-                # If row not selected, select it exclusive
+                # Exclusive selection unless already selected
                 item = self.table.item(current_row, 0)
                 if item and not item.isSelected():
                     self.table.clearSelection()
                     self.table.selectRow(current_row)
 
-            # Apply to all selected rows
-            selected_rows = [i.row() for i in self.table.selectedItems() if i.column() == 0]
-            if current_row not in selected_rows:
-                selected_rows.append(current_row)
+            # Always apply to current (and selection if any)
+            # Standard: if simple click, we toggled current.
+            # If multiple selected, we toggle all?
+            # "Apply the same checked/unchecked state to all selected rows"
+
+            # Force selection of current if it wasn't
+            if not self.table.item(current_row, 0).isSelected():
                 self.table.selectRow(current_row)
 
+            # Bulk apply
+            selected_rows = set(i.row() for i in self.table.selectedItems())
             for r in selected_rows:
                 self._update_row_checkbox(r, self.target_state)
 
@@ -222,15 +231,44 @@ class DraggableCheckboxContainer(QWidget):
 
     def mouseMoveEvent(self, event):
         if self.drag_active:
-            # Map global pos to viewport
             pos = self.table.viewport().mapFromGlobal(event.globalPos())
             idx = self.table.indexAt(pos)
             if idx.isValid():
-                r = idx.row()
-                # Select and update
-                if not self.table.item(r, 0).isSelected():
-                    self.table.selectRow(r)
-                self._update_row_checkbox(r, self.target_state)
+                current_row = idx.row()
+
+                # Interpolate if we moved too fast
+                if self.last_drag_row != -1:
+                    step = 1 if current_row > self.last_drag_row else -1
+                    # Range from last_drag_row (exclusive) to current (inclusive)
+                    # Actually, we want to cover the path.
+
+                    r_start = self.last_drag_row
+                    r_end = current_row
+
+                    # We already handled last_drag_row. So start from next.
+                    # Wait, if we moved up/down, we want to toggle everything in between.
+
+                    rows_to_process = []
+                    if r_start == r_end:
+                        rows_to_process = [r_start] # Already processed?
+                    else:
+                        for r in range(r_start, r_end + step, step):
+                            rows_to_process.append(r)
+
+                    for r in rows_to_process:
+                        if not self.table.item(r, 0).isSelected():
+                            self.table.selectRow(r)
+                        self._update_row_checkbox(r, self.target_state)
+
+                self.last_drag_row = current_row
+
+    def _select_range(self, start, end):
+        r_min, r_max = min(start, end), max(start, end)
+        selection = QItemSelection(
+            self.table.model().index(r_min, 0),
+            self.table.model().index(r_max, self.table.columnCount()-1)
+        )
+        self.table.selectionModel().select(selection, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
 
     def mouseReleaseEvent(self, event):
         if self.drag_active:
@@ -374,8 +412,8 @@ class ProjectConfigView(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
 
     def setup_icons(self):
-        IconHelper.apply_icon(self.btn_save, "save", "black")
-        IconHelper.apply_icon(self.btn_delete, "delete", "black")
+        IconHelper.apply_icon(self.btn_save, "save", "white")
+        IconHelper.apply_icon(self.btn_delete, "delete", "white")
         IconHelper.apply_icon(self.btn_up, "arrow_up")
         IconHelper.apply_icon(self.btn_down, "arrow_down")
 
@@ -624,13 +662,15 @@ class ProjectConfigView(QWidget):
                     """)
                 else:
                     # Generic container (like for CheckBox)
-                    # User request: Checkbox should remain black even when selected
+                    # User request: Checkbox should contrast background (White plate)
                     widget.setStyleSheet(f"""
                         QWidget {{
                             background-color: {bg};
                         }}
                         QCheckBox {{
-                            color: black;
+                            background-color: white;
+                            border-radius: 2px;
+                            padding: 2px;
                         }}
                     """)
 
