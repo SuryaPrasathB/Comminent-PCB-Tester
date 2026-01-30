@@ -11,7 +11,7 @@ from test_runner import TestRunner
 from raw_serial_driver import RawSerial
 from config import SLAVE_DEVICES
 
-from logs import logger  # ✅ ADDED
+from logs import logger  
 
 
 class ExecutionController(QWidget):
@@ -19,7 +19,7 @@ class ExecutionController(QWidget):
         super().__init__(parent_tab)
 
         print("[EXEC] ExecutionController __init__ called")
-        logger.info("ExecutionController initialized")  # ✅ ADDED
+        logger.info("ExecutionController initialized")  
 
         self.parent_tab = parent_tab
         self.runner = None
@@ -34,7 +34,7 @@ class ExecutionController(QWidget):
     # -------------------------------------------------
     def showEvent(self, event):
         print("[EXEC] Execution tab activated (showEvent)")
-        logger.info("Execution tab activated (showEvent)")  # ✅ ADDED
+        logger.info("Execution tab activated (showEvent)")  
         super().showEvent(event)
 
     # -------------------------------------------------
@@ -42,25 +42,25 @@ class ExecutionController(QWidget):
         import os
 
         print("[EXEC] load_ui() called")
-        logger.info("Execution UI load started")  # ✅ ADDED
+        logger.info("Execution UI load started")  
 
         loader = QUiLoader()
         base_dir = os.path.dirname(os.path.abspath(__file__))
         ui_path = os.path.join(base_dir, "execution.ui")
 
         print(f"[EXEC] Loading UI from: {ui_path}")
-        logger.info(f"Loading execution UI from {ui_path}")  # ✅ ADDED
+        logger.info(f"Loading execution UI from {ui_path}")  
 
         ui_file = QFile(ui_path)
         if not ui_file.open(QIODevice.ReadOnly):
-            logger.error(f"Unable to open execution.ui: {ui_path}")  # ✅ ADDED
+            logger.error(f"Unable to open execution.ui: {ui_path}")  
             raise RuntimeError(f"Unable to open/read ui device: {ui_path}")
 
         self.ui = loader.load(ui_file, self.parent_tab)
         ui_file.close()
 
         if not self.ui:
-            logger.error("Failed to load execution.ui")  # ✅ ADDED
+            logger.error("Failed to load execution.ui")  
             raise RuntimeError("Failed to load execution.ui")
 
         old_layout = self.parent_tab.layout()
@@ -105,7 +105,7 @@ class ExecutionController(QWidget):
         self.cmb_projects.installEventFilter(self)
 
         print("[EXEC] Execution UI loaded successfully")
-        logger.info("Execution UI loaded successfully")  # ✅ ADDED
+        logger.info("Execution UI loaded successfully")  
 
     # -------------------------------------------------
     def eventFilter(self, obj, event):
@@ -113,12 +113,12 @@ class ExecutionController(QWidget):
 
             if obj == self.cmb_comPort:
                 print("[EXEC] COM dropdown clicked → rescanning ports")
-                logger.info("COM dropdown clicked → rescanning ports")  # ✅ ADDED
+                logger.info("COM dropdown clicked → rescanning ports")  
                 self._load_com_ports()
 
             elif obj == self.cmb_projects:
                 print("[EXEC] Project dropdown clicked → refreshing projects")
-                logger.info("Project dropdown clicked → refreshing projects")  # ✅ ADDED
+                logger.info("Project dropdown clicked → refreshing projects")  
                 self.refresh_projects()
 
         return super().eventFilter(obj, event)
@@ -126,7 +126,7 @@ class ExecutionController(QWidget):
     # -------------------------------------------------
     def _load_com_ports(self):
         print("[EXEC] Scanning available COM ports...")
-        logger.info("Scanning available COM ports")  # ✅ ADDED
+        logger.info("Scanning available COM ports")  
 
         self.cmb_comPort.blockSignals(True)
         self.cmb_comPort.clear()
@@ -135,7 +135,7 @@ class ExecutionController(QWidget):
         ports = list_ports.comports()
         for p in ports:
             print(f"[EXEC] Found COM port: {p.device}")
-            logger.info(f"Found COM port: {p.device}")  # ✅ ADDED
+            logger.info(f"Found COM port: {p.device}")  
             self.cmb_comPort.addItem(p.device)
 
         self.cmb_comPort.blockSignals(False)
@@ -143,7 +143,7 @@ class ExecutionController(QWidget):
     # -------------------------------------------------
     def connect_signals(self):
         print("[EXEC] Connecting signals")
-        logger.info("Connecting Execution tab signals")  # ✅ ADDED
+        logger.info("Connecting Execution tab signals")  
 
         self.cmb_projects.currentIndexChanged.connect(self.load_selected_project)
         self.btn_start.clicked.connect(self.start_tests)
@@ -157,12 +157,12 @@ class ExecutionController(QWidget):
         if com.startswith("--"):
             return
         print(f"[EXEC] COM selected: {com}")
-        logger.info(f"COM selected: {com}")  # ✅ ADDED
+        logger.info(f"COM selected: {com}")  
 
     # -------------------------------------------------
     def refresh_projects(self):
         print("[EXEC] Refreshing project list")
-        logger.info("Refreshing project list")  # ✅ ADDED
+        logger.info("Refreshing project list")  
 
         current = self.cmb_projects.currentText()
 
@@ -172,7 +172,7 @@ class ExecutionController(QWidget):
 
         for p in load_projects():
             print(f"[EXEC] Found project: {p}")
-            logger.info(f"Found project: {p}")  # ✅ ADDED
+            logger.info(f"Found project: {p}")  
             self.cmb_projects.addItem(p)
 
         self.cmb_projects.setCurrentText(current)
@@ -182,7 +182,7 @@ class ExecutionController(QWidget):
     def load_selected_project(self):
         project_name = self.cmb_projects.currentText()
         print(f"[EXEC] Project selected: {project_name}")
-        logger.info(f"Project selected: {project_name}")  # ✅ ADDED
+        logger.info(f"Project selected: {project_name}")  
 
         if project_name.startswith("--"):
             return
@@ -198,7 +198,7 @@ class ExecutionController(QWidget):
 
         test_cases = load_test_cases(project_name)
 
-        logger.info(f"Loaded {len(test_cases)} enabled test cases")  # ✅ ADDED
+        logger.info(f"Loaded {len(test_cases)} enabled test cases")  
         self.populate_results_table(test_cases)
 
         # UPDATE Currently Loaded Project
@@ -206,7 +206,7 @@ class ExecutionController(QWidget):
 
     # -------------------------------------------------
     def populate_results_table(self, test_cases):
-        logger.info("Populating execution results table")  # ✅ ADDED
+        logger.info("Populating execution results table")  
         self.table_results.setRowCount(0)
 
         for row, tc in enumerate(test_cases):
@@ -226,18 +226,18 @@ class ExecutionController(QWidget):
     # -------------------------------------------------
     def start_tests(self):
         print("[EXEC] Start tests clicked")
-        logger.info("Start tests clicked")  # ✅ ADDED
+        logger.info("Start tests clicked")  
 
         project_name = self.cmb_projects.currentText()
         com_port = self.cmb_comPort.currentText()
 
         if project_name.startswith("--"):
-            logger.warning("Start test aborted: project not selected")  # ✅ ADDED
+            logger.warning("Start test aborted: project not selected")  
             QMessageBox.warning(self.ui, "Error", "Select project")
             return
 
         if com_port.startswith("--"):
-            logger.warning("Start test aborted: COM port not selected")  # ✅ ADDED
+            logger.warning("Start test aborted: COM port not selected")  
             QMessageBox.warning(self.ui, "Error", "Select COM port")
             return
 

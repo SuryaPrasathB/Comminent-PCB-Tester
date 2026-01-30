@@ -7,7 +7,7 @@ import sys
 
 # We'll assume db_utils.py exists with this function, as per the problem description.
 from db_utils import authenticate_user
-from logs import logger  # ✅ ADDED
+from logs import logger  
 
 
 class LoginWindow(QDialog):
@@ -15,7 +15,7 @@ class LoginWindow(QDialog):
         super().__init__()
         self.logged_in_role = None
 
-        logger.info("LoginWindow initialized")  # ✅ ADDED
+        logger.info("LoginWindow initialized")  
 
         # Load the UI and set it up
         ui_file_name = "login.ui"
@@ -23,7 +23,7 @@ class LoginWindow(QDialog):
         if not ui_file.open(QIODevice.ReadOnly):
             # Handle error
             print(f"Cannot open {ui_file_name}: {ui_file.errorString()}")
-            logger.error(f"Failed to open login.ui: {ui_file.errorString()}")  # ✅ ADDED
+            logger.error(f"Failed to open login.ui: {ui_file.errorString()}")  
             return
 
         loader = QUiLoader()
@@ -33,7 +33,7 @@ class LoginWindow(QDialog):
 
         # Set the layout from the temporary widget to this dialog
         if not temp_widget:
-            logger.error("Failed to load login UI")  # ✅ ADDED
+            logger.error("Failed to load login UI")  
             return
 
         self.setLayout(temp_widget.layout())
@@ -55,10 +55,10 @@ class LoginWindow(QDialog):
 
         # Connect signals
 
-        logger.info("Login UI widgets initialized")  # ✅ ADDED
+        logger.info("Login UI widgets initialized")  
 
         self.login_button.clicked.connect(self.handle_login)
-        logger.info("Login button signal connected")  # ✅ ADDED
+        logger.info("Login button signal connected")  
 
     def handle_login(self):
         username = self.username_input.text().strip()
@@ -67,10 +67,10 @@ class LoginWindow(QDialog):
 
         logger.info(
             f"Login attempt | user='{username}' | role='{role}'"
-        )  # ✅ ADDED
+        )  
 
         if not username or not password:
-            logger.warning("Login failed: empty username or password")  # ✅ ADDED
+            logger.warning("Login failed: empty username or password")  
             QMessageBox.warning(self, "Input Error", "Please enter username and password.")
             return
 
@@ -80,17 +80,17 @@ class LoginWindow(QDialog):
             self.logged_in_role = role
             logger.info(
                 f"Login successful | user='{username}' | role='{role}'"
-            )  # ✅ ADDED
+            )  
             self.accept()
         else:
             logger.warning(
                 f"Login failed | user='{username}' | role='{role}' | reason='{message}'"
-            )  # ✅ ADDED
+            )  
             QMessageBox.critical(self, "Login Failed", message)
 
 
 if __name__ == '__main__':
-    logger.info("LoginWindow launched as standalone application")  # ✅ ADDED
+    logger.info("LoginWindow launched as standalone application")  
 
     app = QApplication(sys.argv)
     window = LoginWindow()

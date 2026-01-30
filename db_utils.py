@@ -35,7 +35,7 @@ def authenticate_user(username: str, password: str, role: str):
     )
     conn = connect_db()
     if not conn:
-        logger.error("Authentication failed: DB connection failed")   # ✅ ADDED
+        logger.error("Authentication failed: DB connection failed")  
         return False, "Database connection failed"
 
     try:
@@ -47,7 +47,7 @@ def authenticate_user(username: str, password: str, role: str):
         user = cur.fetchone()
 
         if not user:
-            logger.warning(f"Authentication failed: invalid user {username}")   # ✅ ADDED
+            logger.warning(f"Authentication failed: invalid user {username}")  
             return False, "Invalid username or role"
 
         stored = user["password_hash"]
@@ -55,28 +55,28 @@ def authenticate_user(username: str, password: str, role: str):
         # Plain text (temporary)
         if stored == password:
             logging.info(f"Login success (plain) for {username}")
-            logger.info(f"Login success (plain) for {username}")   # ✅ ADDED
+            logger.info(f"Login success (plain) for {username}")  
             return True, role
 
         # bcrypt
         if stored.startswith("$2"):
             if bcrypt.checkpw(password.encode(), stored.encode()):
                 logging.info(f"Login success (bcrypt) for {username}")
-                logger.info(f"Login success (bcrypt) for {username}")   # ✅ ADDED
+                logger.info(f"Login success (bcrypt) for {username}")  
                 return True, role
 
-        logger.warning(f"Authentication failed: invalid password for {username}")   # ✅ ADDED
+        logger.warning(f"Authentication failed: invalid password for {username}")  
         return False, "Invalid password"
 
     except Error as e:
         logging.error(e)
-        logger.error(f"Authentication DB error: {e}")   # ✅ ADDED
+        logger.error(f"Authentication DB error: {e}")  
         return False, "Database error"
 
     finally:
         cur.close()
         conn.close()
-        logger.info("Authentication DB connection closed")   # ✅ ADDED
+        logger.info("Authentication DB connection closed")  
 
     # =====================================================
     # TABLE CREATION (FIXED + VERBOSE)
@@ -88,21 +88,21 @@ def authenticate_user(username: str, password: str, role: str):
 # =====================================================
 def create_tables():
     print("[DB] create_tables() called")
-    logger.info("create_tables called")   # ✅ ADDED
+    logger.info("create_tables called")  
 
     conn = connect_db()
     if not conn:
         print("[DB][ERROR] Database connection failed")
-        logger.error("create_tables failed: DB connection failed")   # ✅ ADDED
+        logger.error("create_tables failed: DB connection failed")  
         return
 
     print("[DB] Connected to database:", DB_CONFIG.get("database"))
-    logger.info(f"Connected to database: {DB_CONFIG.get('database')}")   # ✅ ADDED
+    logger.info(f"Connected to database: {DB_CONFIG.get('database')}")  
 
     cur = conn.cursor()
     try:
         print("[DB] Ensuring table: projects")
-        logger.info("Ensuring table: projects")   # ✅ ADDED
+        logger.info("Ensuring table: projects")  
 
         try:
             cur.execute("""
@@ -125,10 +125,10 @@ def create_tables():
             if e.errno != 1050:
                 raise
             print("[DB] projects table already exists")
-            logger.info("projects table already exists")   # ✅ ADDED
+            logger.info("projects table already exists")  
 
         print("[DB] Ensuring table: test_results")
-        logger.info("Ensuring table: test_results")   # ✅ ADDED
+        logger.info("Ensuring table: test_results")  
 
         try:
             cur.execute("""
@@ -154,33 +154,33 @@ def create_tables():
             if e.errno != 1050:
                 raise
             print("[DB] test_results table already exists")
-            logger.info("test_results table already exists")   # ✅ ADDED
+            logger.info("test_results table already exists")  
 
         conn.commit()
         print("[DB] Database schema ready")
-        logger.info("Database schema ready")   # ✅ ADDED
+        logger.info("Database schema ready")  
 
     except Exception as e:
         print("[DB][FATAL] Schema creation failed")
         print(e)
-        logger.error(f"Schema creation failed: {e}")   # ✅ ADDED
+        logger.error(f"Schema creation failed: {e}")  
 
     finally:
         cur.close()
         conn.close()
         print("[DB] Database connection closed")
-        logger.info("Database connection closed after create_tables")   # ✅ ADDED
+        logger.info("Database connection closed after create_tables")  
 
 
 # =====================================================
 # SAVE PROJECT CONFIG (FULL OVERWRITE)
 # =====================================================
 def save_project(project_name: str, test_cases: list):
-    logger.info(f"save_project called | project={project_name}")   # ✅ ADDED
+    logger.info(f"save_project called | project={project_name}")  
 
     conn = connect_db()
     if not conn:
-        logger.error("save_project failed: DB connection failed")   # ✅ ADDED
+        logger.error("save_project failed: DB connection failed")  
         return
 
     cur = conn.cursor()
@@ -207,23 +207,23 @@ def save_project(project_name: str, test_cases: list):
 
         conn.commit()
         logging.info(f"Project '{project_name}' saved")
-        logger.info(f"Project '{project_name}' saved successfully")   # ✅ ADDED
+        logger.info(f"Project '{project_name}' saved successfully")  
 
     finally:
         cur.close()
         conn.close()
-        logger.info("DB connection closed after save_project")   # ✅ ADDED
+        logger.info("DB connection closed after save_project")  
 
 
 # =====================================================
 # LOAD PROJECT LIST
 # =====================================================
 def load_projects():
-    logger.info("load_projects called")   # ✅ ADDED
+    logger.info("load_projects called")  
 
     conn = connect_db()
     if not conn:
-        logger.error("load_projects failed: DB connection failed")   # ✅ ADDED
+        logger.error("load_projects failed: DB connection failed")  
         return []
 
     cur = conn.cursor()
@@ -237,7 +237,7 @@ def load_projects():
     cur.close()
     conn.close()
 
-    logger.info(f"load_projects returned {len(names)} projects")   # ✅ ADDED
+    logger.info(f"load_projects returned {len(names)} projects")  
     return names
 
 
@@ -245,11 +245,11 @@ def load_projects():
 # LOAD PROJECT CONFIG (ALL ROWS)
 # =====================================================
 def load_project_rows(project_name: str):
-    logger.info(f"load_project_rows called | project={project_name}")   # ✅ ADDED
+    logger.info(f"load_project_rows called | project={project_name}")  
 
     conn = connect_db()
     if not conn:
-        logger.error("load_project_rows failed: DB connection failed")   # ✅ ADDED
+        logger.error("load_project_rows failed: DB connection failed")  
         return []
 
     cur = conn.cursor(dictionary=True)
@@ -264,7 +264,7 @@ def load_project_rows(project_name: str):
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    logger.info(f"Loaded {len(rows)} rows for project '{project_name}'")   # ✅ ADDED
+    logger.info(f"Loaded {len(rows)} rows for project '{project_name}'")  
 
     return [{
         "sn": r["sn"],
@@ -283,11 +283,11 @@ def load_project_rows(project_name: str):
 # LOAD ENABLED TEST CASES (EXECUTION)
 # =====================================================
 def load_test_cases(project_name: str):
-    logger.info(f"load_test_cases called | project={project_name}")   # ✅ ADDED
+    logger.info(f"load_test_cases called | project={project_name}")  
 
     conn = connect_db()
     if not conn:
-        logger.error("load_test_cases failed: DB connection failed")   # ✅ ADDED
+        logger.error("load_test_cases failed: DB connection failed")  
 
         return []
 
@@ -303,7 +303,7 @@ def load_test_cases(project_name: str):
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    logger.info(f"Enabled test cases loaded: {len(rows)}")   # ✅ ADDED
+    logger.info(f"Enabled test cases loaded: {len(rows)}")  
 
     return [{
         "sn": r["sn"],
@@ -331,7 +331,7 @@ def save_test_result(project_name, pcb_serial, sn, data):
     cur = conn.cursor()
     try:
         print(f"[DB] Saving test result → Project={project_name}, PCB={pcb_serial}, SN={sn}")
-        logger.error("save_test_result failed: DB connection failed")   # ✅ ADDED
+        logger.error("save_test_result failed: DB connection failed")  
 
         cur.execute("""
             INSERT INTO test_results
@@ -371,30 +371,30 @@ def save_test_result(project_name, pcb_serial, sn, data):
 
         conn.commit()
         print("[DB] Test result saved successfully")
-        logger.info("Test result saved successfully")   # ✅ ADDED
+        logger.info("Test result saved successfully")  
 
     except Exception as e:
         print("[DB][FATAL] Failed to save test result")
         print(e)
-        logger.error(f"Failed to save test result: {e}")   # ✅ ADDED
+        logger.error(f"Failed to save test result: {e}")  
         raise   # IMPORTANT: propagate real DB failure
 
     finally:
         cur.close()
         conn.close()
-        logger.info("DB connection closed after save_test_result")   # ✅ ADDED
+        logger.info("DB connection closed after save_test_result")  
 
 def delete_project(project_name: str):
     """
     Delete a project and all its test cases from database
     """
-    logger.info(f"delete_project called | project={project_name}")   # ✅ ADDED
+    logger.info(f"delete_project called | project={project_name}")  
 
     conn =  connect_db()
     cursor = conn.cursor()
 
     try:
-        logger.info(f"Deleting project records for '{project_name}'")   # ✅ ADDED
+        logger.info(f"Deleting project records for '{project_name}'")  
 
         # If you have a separate project table
         cursor.execute(
@@ -402,7 +402,7 @@ def delete_project(project_name: str):
             (project_name,)
         )
 
-        logger.info(f"Deleted from projects table | project={project_name}")   # ✅ ADDED
+        logger.info(f"Deleted from projects table | project={project_name}")  
 
         # If test cases are stored separately
         #cursor.execute(
@@ -413,7 +413,7 @@ def delete_project(project_name: str):
        # logger.info(f"Deleted from project_test_cases table | project={project_name}")
 
         conn.commit()
-        logger.info(f"Project '{project_name}' deleted successfully")   # ✅ ADDED
+        logger.info(f"Project '{project_name}' deleted successfully")  
 
     except Exception as e:
         conn.rollback()

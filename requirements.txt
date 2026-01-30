@@ -1,10 +1,6 @@
 bcrypt
 qtawesome
 schemdraw
-PySide6
 mysql
-mysql-connector-python
-pyserial
-pymodbus
+serial
 openpyxl
-pandas

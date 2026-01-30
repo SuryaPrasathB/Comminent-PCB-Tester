@@ -3,7 +3,7 @@ import serial
 import time
 
 from config import SERIAL_SETTINGS, SLAVE_DEVICES
-from logs import logger   # ✅ ADDED
+from logs import logger   
 
 
 class RawSerial:
@@ -14,7 +14,7 @@ class RawSerial:
     """
 
     def __init__(self, port: str):
-        logger.info(f"Initializing RawSerial | port={port}")   # ✅ ADDED
+        logger.info(f"Initializing RawSerial | port={port}")   
 
         print(f"[RAW] Opening RAW serial port: {port}")
 
@@ -29,7 +29,7 @@ class RawSerial:
         )
 
         if not self.ser.is_open:
-            logger.error(f"Failed to open RAW serial port | port={port}")   # ✅ ADDED
+            logger.error(f"Failed to open RAW serial port | port={port}")   
             raise RuntimeError("Failed to open RAW serial port")
 
         print(
@@ -44,7 +44,7 @@ class RawSerial:
             f"baud={SERIAL_SETTINGS['baudrate']}, "
             f"parity={SERIAL_SETTINGS['parity']}, "
             f"stopbits={SERIAL_SETTINGS['stopbits']}"
-        )   # ✅ ADDED
+        )   
 
     # -------------------------------------------------
     def write_read(
@@ -120,7 +120,7 @@ class RawSerial:
     def close(self):
         if self.ser and self.ser.is_open:
             print("[RAW] Closing RAW serial port")
-            logger.info("Closing RAW serial port")   # ✅ ADDED
+            logger.info("Closing RAW serial port")   
             self.ser.close()
-            logger.info("RAW serial port closed")   # ✅ ADDED
+            logger.info("RAW serial port closed")   
 
