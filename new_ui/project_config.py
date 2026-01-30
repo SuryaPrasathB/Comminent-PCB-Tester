@@ -379,40 +379,45 @@ class ProjectConfigView(QWidget):
         self.table.verticalHeader().setVisible(False)
         
         # =========================================================================
-        # STYLE FIX: Row Highlighting & Native Checkbox
+        # STYLE FIX: Row Highlighting & Checkbox Visibility
         # =========================================================================
-        self.table.setStyleSheet("""
+        # Resolve path for checkbox icon to ensure it's loaded correctly
+        check_icon_path = os.path.join(base_dir, "forms", "checkbox_checked.svg").replace("\\", "/")
+
+        self.table.setStyleSheet(f"""
             /* Row Selection: Soft Blue-Grey to contrast with Checkboxes */
-            QTableWidget::item:selected {
-                background-color: #E6F0FF;
+            QTableWidget::item:selected {{
+                background-color: #0078D7;
                 color: #1a1a1a;
                 font-weight: bold;
-            }
-            QTableWidget::item:selected:!active {
-                background-color: #E6F0FF;
+            }}
+            QTableWidget::item:selected:!active {{
+                background-color: #0078D7;
                 color: #1a1a1a;
-            }
+            }}
 
-            /* NATIVE CHECKBOX STYLING 
-               Reverted to native look by removing 'indicator' styling.
-               Forced 'color: black' to ensure visibility in light mode.
+            /* CUSTOM CHECKBOX STYLING 
+               Explicitly styling indicator to ensure white background and black checkmark.
             */
-            QCheckBox {
+            QCheckBox {{
                 spacing: 0px;
                 background: transparent;
                 color: black;
-            }
-            QCheckBox::indicator {
-                border: 1px solid black;
-                width: 12px;
-                height: 12px;
+            }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border: 1px solid #888;
                 background: white;
-            }
-            QCheckBox::indicator:checked {
-                background-color: black;
-                border: 1px solid black;
-                image: none;
-            }
+                border-radius: 2px;
+            }}
+            QCheckBox::indicator:checked {{
+                image: url({check_icon_path});
+                border: 1px solid #555; 
+            }}
+            QCheckBox::indicator:hover {{
+                border: 1px solid #007ACC;
+            }}
         """)
         
     def configure_table_headers(self):
@@ -650,7 +655,7 @@ class ProjectConfigView(QWidget):
         rows = self.table.rowCount()
         
         # Row selection color (Soft Blue-Grey)
-        SELECTION_BG = "#E6F0FF" 
+        SELECTION_BG = "#0078D7" 
         SELECTION_TXT = "#1a1a1a"
         
         for r in range(rows):
