@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QVBoxLayout, QHeaderView
 )
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, QEvent
+from PySide6.QtCore import QFile, QIODevice, QEvent, Qt
 
 from serial.tools import list_ports
 
@@ -66,14 +66,27 @@ class ExecutionView(QWidget):
         self.table_results.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table_results.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_results.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.table_results.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table_results.setWordWrap(True)
+        self.table_results.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+
+        # Column Sizing
+        header = self.table_results.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Description
+        for col in range(1, 12):
+            header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(12, QHeaderView.Stretch)  # Result
 
         # Event Filters for refreshing on click
         self.cmb_comPort.installEventFilter(self)
         self.cmb_projects.installEventFilter(self)
 
-        # Row highlighting style
+        # Row highlighting style and cell padding
         self.table_results.setStyleSheet("""
+            QTableWidget::item {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
             QTableWidget::item:selected {
                 background-color: #0078d7;
                 color: white;
@@ -146,16 +159,20 @@ class ExecutionView(QWidget):
         for row, tc in enumerate(test_cases):
             self.table_results.insertRow(row)
             self.table_results.setItem(row, 0, QTableWidgetItem(tc['desc']))
-            self.table_results.setItem(row, 1, QTableWidgetItem(tc['r']))
-            self.table_results.setItem(row, 2, QTableWidgetItem(tc['y']))
-            self.table_results.setItem(row, 3, QTableWidgetItem(tc['b']))
-            self.table_results.setItem(row, 4, QTableWidgetItem(tc['n']))
-            self.table_results.setItem(row, 5, QTableWidgetItem(tc['v']))
-            self.table_results.setItem(row, 6, QTableWidgetItem(tc['i']))
+
+            # Center align intermediate columns
+            vals = [tc['r'], tc['y'], tc['b'], tc['n'], tc['v'], tc['i']]
+            for i, val in enumerate(vals):
+                item = QTableWidgetItem(val)
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table_results.setItem(row, i + 1, item)
 
             # Placeholders for results
             for col in range(7, 13):
-                self.table_results.setItem(row, col, QTableWidgetItem(""))
+                item = QTableWidgetItem("")
+                if col < 12:
+                    item.setTextAlignment(Qt.AlignCenter)
+                self.table_results.setItem(row, col, item)
 
     def start_tests(self):
         project_name = self.cmb_projects.currentText()

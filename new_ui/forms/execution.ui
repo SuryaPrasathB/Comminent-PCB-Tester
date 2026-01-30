@@ -196,7 +196,7 @@
         <string notr="true">background-color: #28a745; color: white; font-size: 14pt; font-weight: bold;</string>
        </property>
        <property name="text">
-        <string>START TEST</string>
+        <string>  START TEST</string>
        </property>
       </widget>
      </item>
@@ -209,12 +209,26 @@
         </size>
        </property>
        <property name="styleSheet">
-        <string notr="true">background-color: #dc3545; color: white; font-weight: bold; font-size: 12pt;</string>
+        <string notr="true">background-color: #dc3545; color: white; font-weight: bold; font-size: 14pt;</string>
        </property>
        <property name="text">
-        <string>STOP</string>
+        <string>  STOP</string>
        </property>
       </widget>
+     </item>
+
+     <item>
+      <spacer name="horizontalSpacer_bottom">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
 
      <item>
@@ -242,20 +256,6 @@
               </size>
              </property>
         </widget>
-     </item>
-
-     <item>
-      <spacer name="horizontalSpacer_bottom">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
      </item>
 
     </layout>
