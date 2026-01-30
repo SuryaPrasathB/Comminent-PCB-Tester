@@ -165,6 +165,7 @@ class DraggableCheckboxContainer(QWidget):
     def __init__(self, table):
         super().__init__()
         self.table = table
+        self.setObjectName("checkbox_container")
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -662,15 +663,23 @@ class ProjectConfigView(QWidget):
                     """)
                 else:
                     # Generic container (like for CheckBox)
-                    # User request: Checkbox should contrast background (White plate)
+                    # Force black lines as requested, using specific targeting for container background
                     widget.setStyleSheet(f"""
-                        QWidget {{
+                        #checkbox_container {{
                             background-color: {bg};
                         }}
                         QCheckBox {{
-                            background-color: white;
-                            border-radius: 2px;
-                            padding: 2px;
+                            background-color: transparent;
+                        }}
+                        QCheckBox::indicator {{
+                            width: 14px;
+                            height: 14px;
+                            border: 1px solid black;
+                            border-radius: 3px;
+                            background-color: transparent;
+                        }}
+                        QCheckBox::indicator:checked {{
+                            image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPSdibGFjaycgc3Ryb2tlLXdpZHRoPScyJyBzdHJva2UtbGluZWNhcD0ncm91bmQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnPjxwb2x5bGluZSBwb2ludHM9JzIwIDYgOSAxNyA0IDEyJy8+PC9zdmc+);
                         }}
                     """)
 
