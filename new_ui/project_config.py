@@ -275,11 +275,6 @@ class DraggableCheckboxContainer(QWidget):
         if self.drag_active:
             self.drag_active = False
             self.releaseMouse()
-            # Force circuit update if current row changed
-            # We can cheat and trigger the selection signal logic again?
-            # Or assume the user is done. The on_row_selected is connected to selection change.
-            # If selection changed during drag, on_row_selected was called.
-            # But we might want to ensure the final state is consistent.
             pass
 
     def _get_row(self):
@@ -359,12 +354,8 @@ class ProjectConfigView(QWidget):
                 self.circuit_container = QWidget()
                 container_layout = QVBoxLayout(self.circuit_container)
                 container_layout.setContentsMargins(0, 0, 0, 0)
-                # Removed AlignCenter to allow the widget to expand horizontally;
-                # SVG's preserveAspectRatio="xMidYMid meet" handles the actual centering/aspect ratio.
 
                 self.svg_circuit = AntialiasedSvgWidget()
-                # Use Preferred size policy so it respects SVG size hint but can shrink/grow slightly if needed
-                # However, with AlignCenter in layout, it should stick to its size hint or available space.
                 self.svg_circuit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
                 container_layout.addWidget(self.svg_circuit)
@@ -387,12 +378,29 @@ class ProjectConfigView(QWidget):
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.verticalHeader().setVisible(False)
         
-        # Row highlighting style
+        # =========================================================================
+        # STYLE FIX: Row Highlighting & Native Checkbox
+        # =========================================================================
         self.table.setStyleSheet("""
+            /* Row Selection: Soft Blue-Grey to contrast with Checkboxes */
             QTableWidget::item:selected {
-                background-color: #0078d7;
-                color: white;
+                background-color: #E6F0FF;
+                color: #1a1a1a;
                 font-weight: bold;
+            }
+            QTableWidget::item:selected:!active {
+                background-color: #E6F0FF;
+                color: #1a1a1a;
+            }
+
+            /* NATIVE CHECKBOX STYLING 
+               Reverted to native look by removing 'indicator' styling.
+               Forced 'color: black' to ensure visibility in light mode.
+            */
+            QCheckBox {
+                spacing: 0px;
+                background: transparent;
+                color: black;
             }
         """)
         
@@ -629,13 +637,18 @@ class ProjectConfigView(QWidget):
     def update_widget_highlights(self):
         """Updates the background/text color of cell widgets based on row selection."""
         rows = self.table.rowCount()
+        
+        # Row selection color (Soft Blue-Grey)
+        SELECTION_BG = "#E6F0FF" 
+        SELECTION_TXT = "#1a1a1a"
+        
         for r in range(rows):
             # Check if row is selected by checking the first item
             item = self.table.item(r, 0)
             is_sel = item.isSelected() if item else False
 
-            bg = "#0078d7" if is_sel else "transparent"
-            color = "white" if is_sel else "black"
+            bg = SELECTION_BG if is_sel else "transparent"
+            color = SELECTION_TXT if is_sel else "black"
             font_weight = "bold" if is_sel else "normal"
 
             # Helper to style widgets
@@ -658,32 +671,13 @@ class ProjectConfigView(QWidget):
                         QComboBox QAbstractItemView {{
                             color: black;
                             background-color: white;
-                            selection-background-color: #0078d7;
+                            selection-background-color: {SELECTION_BG};
+                            selection-color: {SELECTION_TXT};
                         }}
                     """)
-                else:
-                    # Generic container (like for CheckBox)
-                    # Force black lines as requested, using specific targeting for container background
-                    widget.setStyleSheet(f"""
-                        #checkbox_container {{
-                            background-color: {bg};
-                        }}
-                        QCheckBox {{
-                            background-color: transparent;
-                        }}
-                        QCheckBox::indicator {{
-                            width: 14px;
-                            height: 14px;
-                            border: 1px solid black;
-                            border-radius: 3px;
-                            background-color: transparent;
-                        }}
-                        QCheckBox::indicator:checked {{
-                            image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPSdibGFjaycgc3Ryb2tlLXdpZHRoPScyJyBzdHJva2UtbGluZWNhcD0ncm91bmQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnPjxwb2x5bGluZSBwb2ludHM9JzIwIDYgOSAxNyA0IDEyJy8+PC9zdmc+);
-                        }}
-                    """)
+                # NOTE: We DO NOT style the checkbox here anymore. 
+                # It is handled globally by self.table.setStyleSheet() in load_ui()
 
-            apply_style(self.table.cellWidget(r, 1), is_combo=False)
             apply_style(self.table.cellWidget(r, 3), is_combo=True)
             apply_style(self.table.cellWidget(r, 4), is_combo=True)
             apply_style(self.table.cellWidget(r, 5), is_combo=True)
