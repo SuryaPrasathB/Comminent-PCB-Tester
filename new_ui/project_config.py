@@ -402,6 +402,17 @@ class ProjectConfigView(QWidget):
                 background: transparent;
                 color: black;
             }
+            QCheckBox::indicator {
+                border: 1px solid black;
+                width: 12px;
+                height: 12px;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background-color: black;
+                border: 1px solid black;
+                image: none;
+            }
         """)
         
     def configure_table_headers(self):
