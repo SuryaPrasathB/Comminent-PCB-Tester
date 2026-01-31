@@ -92,6 +92,7 @@ class AppTheme:
                 border-radius: 4px;
                 padding: 6px 12px;
                 color: %TEXT%;
+                outline: none;
             }
             QPushButton:hover {
                 background-color: %Highlight%; /* slightly lighter/darker */

@@ -1,11 +1,12 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QCheckBox, QComboBox, QMessageBox,
-    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout, QSizePolicy
+    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout, QSizePolicy, QGroupBox
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import QFile, QIODevice, Qt, QEvent, QPoint, QItemSelectionModel, QItemSelection
+from new_ui.circuit_viewer import CircuitPreviewWidget
 from PySide6.QtGui import QPixmap, QPainter, QMouseEvent
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
@@ -344,24 +345,25 @@ class ProjectConfigView(QWidget):
         self.txt_project = self.findChild(QWidget, "lineEdit_projectName")
         self.cmb_projects = self.findChild(QWidget, "comboBox_projects")
         
-        # Replace QLabel with QSvgWidget
+        # Replace QLabel with CircuitPreviewWidget inside a GroupBox
         self.lbl_circuit = self.findChild(QWidget, "label_circuitDiagram")
         if self.lbl_circuit:
             parent = self.lbl_circuit.parentWidget()
             layout = parent.layout()
             if layout:
-                # Create a container to center the diagram
-                self.circuit_container = QWidget()
-                container_layout = QVBoxLayout(self.circuit_container)
-                container_layout.setContentsMargins(0, 0, 0, 0)
+                # Create a container (GroupBox) for the diagram
+                self.circuit_group = QGroupBox("Circuit Preview")
+                self.circuit_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #ccc; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; }")
+                group_layout = QVBoxLayout(self.circuit_group)
+                group_layout.setContentsMargins(10, 20, 10, 10)
 
-                self.svg_circuit = AntialiasedSvgWidget()
+                self.svg_circuit = CircuitPreviewWidget()
                 self.svg_circuit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
-                container_layout.addWidget(self.svg_circuit)
+                group_layout.addWidget(self.svg_circuit)
 
                 # Replace the widget in-place to preserve layout order
-                layout.replaceWidget(self.lbl_circuit, self.circuit_container)
+                layout.replaceWidget(self.lbl_circuit, self.circuit_group)
                 self.lbl_circuit.deleteLater()
             else:
                 logger.error("Could not find layout for circuit label")
@@ -422,19 +424,19 @@ class ProjectConfigView(QWidget):
         
     def configure_table_headers(self):
         header = self.table.horizontalHeader()
-        
-        # "R Tap", "Y Tap", "B Tap", "Neutral", "Exp V", "Exp I" (indices 3,4,5,6,7,8)
-        fixed_width = 80
-        for i in [3, 4, 5, 6, 7, 8]:
-            header.setSectionResizeMode(i, QHeaderView.Fixed)
-            self.table.setColumnWidth(i, fixed_width)
-            
-        # Description (index 2) - stretch
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setStretchLastSection(False)
         
         # S.No (0) and Enable (1) - ResizeToContents
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+
+        # Description (index 2) - stretch
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        
+        # "R Tap", "Y Tap", "B Tap", "Neutral", "Exp V", "Exp I" (indices 3-8)
+        # Resize to contents to keep them compact and centered
+        for i in range(3, 9):
+            header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
 
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_save, "save", "white")
@@ -492,8 +494,13 @@ class ProjectConfigView(QWidget):
             self._set_combo(row, 6, NEUTRAL_OPTIONS, tc.get("n", "NC"))
 
             # Expected
-            self.table.setItem(row, 7, QTableWidgetItem(tc.get("v", "")))
-            self.table.setItem(row, 8, QTableWidgetItem(tc.get("i", "")))
+            item_v = QTableWidgetItem(tc.get("v", ""))
+            item_v.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 7, item_v)
+
+            item_i = QTableWidgetItem(tc.get("i", ""))
+            item_i.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 8, item_i)
 
             self.table.setRowHeight(row, 32)
 
@@ -510,7 +517,7 @@ class ProjectConfigView(QWidget):
         combo.setStyleSheet("""
             QComboBox {
                 border: none;
-                padding-left: 2px;
+                padding-left: 10px;
             }
             QComboBox::drop-down {
                 border: none;
@@ -675,7 +682,7 @@ class ProjectConfigView(QWidget):
                     widget.setStyleSheet(f"""
                         QComboBox {{
                             border: none;
-                            padding-left: 2px;
+                            padding-left: 10px;
                             background-color: {bg};
                             color: {color};
                             font-weight: {font_weight};

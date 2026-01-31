@@ -117,12 +117,51 @@ class MainWindow(QMainWindow):
         self.btn_logout.clicked.connect(self.close)
 
         self.btn_toggle_sidebar.clicked.connect(self.toggle_sidebar)
+        
+        # Reorder Sidebar Buttons (Project First)
+        self.reorder_sidebar()
 
         # Initialize Views storage
         self.views = {}
 
         # Load Default
         self.navigate("execution")
+
+    def reorder_sidebar(self):
+        # Target Order: Project, Execution, Results, Debug, Logs, Settings
+        ordered_widgets = [
+            self.btn_proj, self.btn_exec, self.btn_res, 
+            self.btn_debug, self.btn_logs, self.btn_settings
+        ]
+        
+        # Check if we have the reference widget (Execution usually top)
+        if not self.btn_exec: return
+        
+        parent = self.btn_exec.parentWidget()
+        if not parent: return
+        layout = parent.layout()
+        if not layout: return
+        
+        # Find the insertion index (min index of any of these buttons)
+        indices = []
+        for btn in ordered_widgets:
+            if btn and layout.indexOf(btn) >= 0:
+                indices.append(layout.indexOf(btn))
+        
+        if not indices: return
+        insert_idx = min(indices)
+        
+        # Remove all from layout
+        for btn in ordered_widgets:
+            if btn:
+                layout.removeWidget(btn)
+                
+        # Insert back in order
+        current_idx = insert_idx
+        for btn in ordered_widgets:
+            if btn:
+                layout.insertWidget(current_idx, btn)
+                current_idx += 1
 
     def _get_or_create_view(self, page_name):
         if page_name in self.views:
