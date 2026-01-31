@@ -1,11 +1,12 @@
 import os
 import sys
-from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QLabel, QPushButton, QPlainTextEdit, QMessageBox, QApplication
+from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QLabel, QPushButton, QPlainTextEdit, QMessageBox, QApplication, QSizePolicy
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Qt, QEasingCurve, QPropertyAnimation
 
 from new_ui.icons import IconHelper
 from new_ui.theme import AppTheme
+from new_ui.settings_manager import SettingsManager
 from logs import logger, LogsController
 
 from new_ui.execution import ExecutionView
@@ -20,8 +21,10 @@ class MainWindow(QMainWindow):
     def __init__(self, role):
         super().__init__()
         self.role = role
-        self.current_theme = AppTheme.LIGHT  # Default
         self.wants_relogin = False
+        
+        self.settings_manager = SettingsManager()
+        self.current_theme = self.settings_manager.get_setting("theme", AppTheme.LIGHT)
 
         logger.info(f"Initializing New MainWindow with role={role}")
 
@@ -63,6 +66,23 @@ class MainWindow(QMainWindow):
 
         # Bind Widgets
         self.stack = self.findChild(QStackedWidget, "stackedWidget_content")
+
+        # Fix Layout: Force stack to expand and setup layout stretches
+        if self.stack:
+            self.stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        # Apply specific stretch factors to vertical layout (Header, Content, Footer)
+        if self.centralWidget() and self.centralWidget().layout():
+            h_layout = self.centralWidget().layout()
+            # Index 1 is the verticalLayout_content (nested layout)
+            if h_layout.count() > 1:
+                content_item = h_layout.itemAt(1)
+                if content_item and content_item.layout():
+                    v_layout = content_item.layout()
+                    # 0: Header, 1: Stack, 2: Status
+                    v_layout.setStretch(0, 0)
+                    v_layout.setStretch(1, 1)
+                    v_layout.setStretch(2, 0)
         self.lbl_title = self.findChild(QLabel, "label_page_title")
         self.lbl_user = self.findChild(QLabel, "label_user_info")
         self.status_bar = self.findChild(QPlainTextEdit, "plainTextEdit_status")
@@ -224,6 +244,7 @@ class MainWindow(QMainWindow):
             self.current_theme = force_theme
         else:
             self.current_theme = AppTheme.DARK if self.current_theme == AppTheme.LIGHT else AppTheme.LIGHT
+            self.settings_manager.save_setting("theme", self.current_theme)
 
         logger.info(f"Switching theme to {self.current_theme}")
 

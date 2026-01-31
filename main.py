@@ -2,6 +2,8 @@ import sys
 from PySide6.QtWidgets import QApplication
 from new_ui.login_window import LoginWindow
 from new_ui.main_window import MainWindow
+from new_ui.settings_manager import SettingsManager
+from new_ui.theme import AppTheme
 from db_utils import create_tables
 
 from logs import logger
@@ -16,6 +18,12 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     logger.info("QApplication created")
+
+    # Apply saved theme
+    settings = SettingsManager()
+    saved_theme = settings.get_setting("theme", AppTheme.LIGHT)
+    AppTheme.apply_theme(app, saved_theme)
+    logger.info(f"Applied saved theme: {saved_theme}")
 
     print("Starting application...")
     try:
