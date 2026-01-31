@@ -121,17 +121,22 @@
      </attribute>
      <column>
       <property name="text">
+       <string>SN</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Tested At</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
        <string>Project</string>
       </property>
      </column>
      <column>
       <property name="text">
        <string>PCB Serial</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>SN</string>
       </property>
      </column>
      <column>
@@ -182,11 +187,6 @@
      <column>
       <property name="text">
        <string>Result</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Tested At</string>
       </property>
      </column>
     </widget>
