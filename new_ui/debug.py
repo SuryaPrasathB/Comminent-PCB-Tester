@@ -64,8 +64,7 @@ class DebugView(QWidget):
 
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_apply, "check", "white")
-        IconHelper.apply_icon(self.btn_reset, "times", "white")
-        IconHelper.apply_icon(self.btn_qr, "search")
+        IconHelper.apply_icon(self.btn_reset, "times", "black")
 
     def eventFilter(self, obj, event):
         if obj == self.cmb_com and event.type() == QEvent.MouseButtonPress:
