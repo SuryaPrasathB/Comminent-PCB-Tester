@@ -7,259 +7,295 @@
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>700</height>
+    <height>850</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <property name="leftMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <property name="topMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <property name="rightMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <property name="bottomMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <property name="spacing">
     <number>15</number>
    </property>
 
-   <!-- TOP SECTION: Single Row -->
+   <!-- CONTROLS SECTION -->
    <item>
-    <layout class="QHBoxLayout" name="topLayout">
-     <property name="spacing">
-      <number>15</number>
+    <widget class="QGroupBox" name="groupBox_controls">
+     <property name="title">
+      <string>Test Configuration</string>
      </property>
-
-     <!-- Group 1: Project -->
-     <item>
-        <widget class="QLabel" name="label_project">
-            <property name="text">
-                <string>Select Project:</string>
-            </property>
-            <property name="styleSheet">
-                <string notr="true">font-weight: bold;</string>
-            </property>
-        </widget>
-     </item>
-     <item>
-        <widget class="QComboBox" name="comboBox_projects">
-            <property name="minimumSize">
-                <size>
-                    <width>250</width>
-                    <height>35</height>
-                </size>
-            </property>
-        </widget>
-     </item>
-
-     <item>
-      <spacer name="horizontalSpacer_1">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-
-     <!-- Group 2: Serial -->
-     <item>
-        <widget class="QLabel" name="label_serial">
-            <property name="text">
-                <string>PCB Serial Number:</string>
-            </property>
-            <property name="styleSheet">
-                <string notr="true">font-weight: bold;</string>
-            </property>
-        </widget>
-     </item>
-     <item>
-        <widget class="QLineEdit" name="lineEdit_pcbSerial">
-            <property name="minimumSize">
-                <size>
-                    <width>200</width>
-                    <height>35</height>
-                </size>
-            </property>
-            <property name="readOnly">
-                <bool>true</bool>
-            </property>
-            <property name="placeholderText">
-                <string>Auto-detected via QR</string>
-            </property>
-        </widget>
-     </item>
-
-     <item>
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-
-     <!-- Group 3: COM -->
-     <item>
-        <widget class="QLabel" name="label_com">
-            <property name="text">
-                <string>COM Port:</string>
-            </property>
-            <property name="styleSheet">
-                <string notr="true">font-weight: bold;</string>
-            </property>
-        </widget>
-     </item>
-     <item>
-        <widget class="QComboBox" name="comboBox_comPort">
-            <property name="minimumSize">
-                <size>
-                    <width>150</width>
-                    <height>35</height>
-                </size>
-            </property>
-        </widget>
-     </item>
-
-     <item>
-      <spacer name="horizontalSpacer_end">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-
-    </layout>
-   </item>
-
-   <!-- MIDDLE SECTION: Table -->
-   <item>
-    <widget class="QTableWidget" name="tableWidget_results">
-     <property name="columnCount">
-      <number>13</number>
+     <property name="styleSheet">
+      <string notr="true">QGroupBox { font-weight: bold; border: 1px solid #ccc; margin-top: 10px; padding-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }</string>
      </property>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-     <!-- Columns preserved from original -->
-     <column><property name="text"><string>Description</string></property></column>
-     <column><property name="text"><string>R</string></property></column>
-     <column><property name="text"><string>Y</string></property></column>
-     <column><property name="text"><string>B</string></property></column>
-     <column><property name="text"><string>N</string></property></column>
-     <column><property name="text"><string>Exp V</string></property></column>
-     <column><property name="text"><string>Exp I</string></property></column>
-     <column><property name="text"><string>Act R-V</string></property></column>
-     <column><property name="text"><string>Act Y-V</string></property></column>
-     <column><property name="text"><string>Act B-V</string></property></column>
-     <column><property name="text"><string>Meas V</string></property></column>
-     <column><property name="text"><string>Meas I</string></property></column>
-     <column><property name="text"><string>Result</string></property></column>
+     <layout class="QGridLayout" name="gridLayout_controls">
+      <property name="horizontalSpacing">
+       <number>20</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>10</number>
+      </property>
+
+      <!-- Row 0: Project & COM -->
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_project">
+        <property name="text">
+         <string>Project:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboBox_projects">
+        <property name="minimumSize">
+         <size>
+          <width>250</width>
+          <height>35</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+
+      <item row="0" column="2">
+       <widget class="QLabel" name="label_com">
+        <property name="text">
+         <string>COM Port:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QComboBox" name="comboBox_comPort">
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>35</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      
+      <item row="0" column="4">
+        <spacer name="hSpacer_0">
+         <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        </spacer>
+      </item>
+
+      <!-- Row 1: Serials -->
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_sn1">
+        <property name="text">
+         <string>PCB 1 Serial:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="lineEdit_pcbSerial_1">
+        <property name="placeholderText">
+         <string>Scan or Type SN 1</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>35</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+
+      <item row="1" column="2">
+       <widget class="QLabel" name="label_sn2">
+        <property name="text">
+         <string>PCB 2 Serial:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLineEdit" name="lineEdit_pcbSerial_2">
+        <property name="placeholderText">
+         <string>Scan or Type SN 2</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>35</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+
+     </layout>
     </widget>
    </item>
 
-   <!-- BOTTOM SECTION: Buttons -->
+   <!-- RESULTS 1 -->
    <item>
-    <layout class="QHBoxLayout" name="bottomLayout">
-     <property name="spacing">
-      <number>15</number>
+    <widget class="QGroupBox" name="groupBox_results_1">
+     <property name="title">
+      <string>PCB 1 Results</string>
      </property>
+     <property name="styleSheet">
+      <string notr="true">QGroupBox { font-weight: bold; border: 1px solid #ccc; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }</string>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
+     </property>
+     <layout class="QVBoxLayout" name="layout_res1">
+      <property name="leftMargin"><number>5</number></property>
+      <property name="topMargin"><number>20</number></property>
+      <property name="rightMargin"><number>5</number></property>
+      <property name="bottomMargin"><number>5</number></property>
+      <item>
+       <widget class="QTableWidget" name="tableWidget_results_1">
+        <property name="columnCount">
+         <number>13</number>
+        </property>
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>true</bool>
+        </attribute>
+        <column><property name="text"><string>Description</string></property></column>
+        <column><property name="text"><string>R</string></property></column>
+        <column><property name="text"><string>Y</string></property></column>
+        <column><property name="text"><string>B</string></property></column>
+        <column><property name="text"><string>N</string></property></column>
+        <column><property name="text"><string>Exp V</string></property></column>
+        <column><property name="text"><string>Exp I</string></property></column>
+        <column><property name="text"><string>Act R-V</string></property></column>
+        <column><property name="text"><string>Act Y-V</string></property></column>
+        <column><property name="text"><string>Act B-V</string></property></column>
+        <column><property name="text"><string>Meas V</string></property></column>
+        <column><property name="text"><string>Meas I</string></property></column>
+        <column><property name="text"><string>Result</string></property></column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
 
+   <!-- RESULTS 2 -->
+   <item>
+    <widget class="QGroupBox" name="groupBox_results_2">
+     <property name="title">
+      <string>PCB 2 Results</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QGroupBox { font-weight: bold; border: 1px solid #ccc; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }</string>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
+     </property>
+     <layout class="QVBoxLayout" name="layout_res2">
+      <property name="leftMargin"><number>5</number></property>
+      <property name="topMargin"><number>20</number></property>
+      <property name="rightMargin"><number>5</number></property>
+      <property name="bottomMargin"><number>5</number></property>
+      <item>
+       <widget class="QTableWidget" name="tableWidget_results_2">
+        <property name="columnCount">
+         <number>13</number>
+        </property>
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>true</bool>
+        </attribute>
+        <column><property name="text"><string>Description</string></property></column>
+        <column><property name="text"><string>R</string></property></column>
+        <column><property name="text"><string>Y</string></property></column>
+        <column><property name="text"><string>B</string></property></column>
+        <column><property name="text"><string>N</string></property></column>
+        <column><property name="text"><string>Exp V</string></property></column>
+        <column><property name="text"><string>Exp I</string></property></column>
+        <column><property name="text"><string>Act R-V</string></property></column>
+        <column><property name="text"><string>Act Y-V</string></property></column>
+        <column><property name="text"><string>Act B-V</string></property></column>
+        <column><property name="text"><string>Meas V</string></property></column>
+        <column><property name="text"><string>Meas I</string></property></column>
+        <column><property name="text"><string>Result</string></property></column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+
+   <!-- BOTTOM BUTTONS -->
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_buttons">
      <item>
       <widget class="QPushButton" name="pushButton_start">
+       <property name="text">
+        <string>  START TEST</string>
+       </property>
        <property name="minimumSize">
         <size>
-         <width>200</width>
-         <height>50</height>
+         <width>160</width>
+         <height>45</height>
         </size>
        </property>
        <property name="styleSheet">
-        <string notr="true">background-color: #28a745; color: white; font-size: 14pt; font-weight: bold;</string>
-       </property>
-       <property name="text">
-        <string>  START TEST</string>
+        <string notr="true">background-color: #28a745; color: white; font-weight: bold; font-size: 13pt;</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="pushButton_stop">
-       <property name="minimumSize">
-        <size>
-         <width>150</width>
-         <height>50</height>
-        </size>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: #dc3545; color: white; font-weight: bold; font-size: 14pt;</string>
-       </property>
        <property name="text">
         <string>  STOP</string>
        </property>
-      </widget>
-     </item>
-
-     <item>
-      <spacer name="horizontalSpacer_bottom">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
+       <property name="minimumSize">
         <size>
-         <width>40</width>
-         <height>20</height>
+         <width>130</width>
+         <height>45</height>
         </size>
        </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: #dc3545; color: white; font-weight: bold; font-size: 13pt;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="hSpacer_btns">
+       <property name="orientation"><enum>Qt::Horizontal</enum></property>
       </spacer>
      </item>
-
      <item>
-        <widget class="QPushButton" name="pushButton_runOne">
-            <property name="text">
-                <string>Run Selected</string>
-            </property>
-             <property name="minimumSize">
-              <size>
-               <width>120</width>
-               <height>40</height>
-              </size>
-             </property>
-        </widget>
+      <widget class="QPushButton" name="pushButton_reset">
+       <property name="text">
+        <string>Reset Tables</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>130</width>
+         <height>40</height>
+        </size>
+       </property>
+      </widget>
      </item>
-     <item>
-        <widget class="QPushButton" name="pushButton_reset">
-            <property name="text">
-                <string>Reset Table</string>
-            </property>
-             <property name="minimumSize">
-              <size>
-               <width>120</width>
-               <height>40</height>
-              </size>
-             </property>
-        </widget>
-     </item>
-
     </layout>
    </item>
+
   </layout>
  </widget>
  <resources/>
