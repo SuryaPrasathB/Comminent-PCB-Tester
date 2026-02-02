@@ -3,6 +3,7 @@ import sys
 from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QLabel, QPushButton, QPlainTextEdit, QMessageBox, QApplication, QSizePolicy
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Qt, QEasingCurve, QPropertyAnimation
+from PySide6.QtGui import QIcon, QPixmap
 
 from new_ui.icons import IconHelper
 from new_ui.theme import AppTheme
@@ -14,8 +15,7 @@ from new_ui.project_config import ProjectConfigView
 from new_ui.results import ResultsView
 from new_ui.debug import DebugView
 from new_ui.logs import LogsView
-# SettingsView is placeholder for now or we reuse project config?
-# Let's create a placeholder for settings.
+from new_ui.settings import SettingsView
 
 class MainWindow(QMainWindow):
     def __init__(self, role):
@@ -25,6 +25,9 @@ class MainWindow(QMainWindow):
         
         self.settings_manager = SettingsManager()
         self.current_theme = self.settings_manager.get_setting("theme", AppTheme.LIGHT)
+        
+        # Ensure theme is applied (redundancy for re-login or direct instantiation)
+        AppTheme.apply_theme(QApplication.instance(), self.current_theme)
 
         logger.info(f"Initializing New MainWindow with role={role}")
 
@@ -32,8 +35,14 @@ class MainWindow(QMainWindow):
         self.setup_icons()
         self.setup_navigation()
 
-        # Apply initial theme
-        self.toggle_theme(force_theme=self.current_theme)
+        # Set Window Icon
+        icon_path = os.path.join("resources", "icons", "app_icon.ico")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+            # Load into sidebar logo
+            if hasattr(self, 'label_logo_icon'):
+                pixmap = QPixmap(icon_path)
+                self.label_logo_icon.setPixmap(pixmap)
 
     def load_ui(self):
         loader = QUiLoader()
@@ -48,16 +57,15 @@ class MainWindow(QMainWindow):
         loaded_widget = loader.load(ui_file)
         ui_file.close()
 
-        # Fix: If loaded UI is QMainWindow, extract its central widget to avoid nesting MainWindows
+        # Fix: If loaded UI is QMainWindow, extract its central widget
         if isinstance(loaded_widget, QMainWindow):
             self.ui = loaded_widget.centralWidget()
-            # Ensure we keep a reference to loaded_widget if needed, or rely on reparenting.
-            # Reparenting the central widget to self is sufficient.
             self.ui.setParent(self)
         else:
             self.ui = loaded_widget
 
         self.setCentralWidget(self.ui)
+        
         # Ensure the content area stretches
         if self.centralWidget() and self.centralWidget().layout():
             self.centralWidget().layout().setStretch(1, 1)
@@ -83,6 +91,7 @@ class MainWindow(QMainWindow):
                     v_layout.setStretch(0, 0)
                     v_layout.setStretch(1, 1)
                     v_layout.setStretch(2, 0)
+        
         self.lbl_title = self.findChild(QLabel, "label_page_title")
         self.lbl_user = self.findChild(QLabel, "label_user_info")
         self.status_bar = self.findChild(QPlainTextEdit, "plainTextEdit_status")
@@ -96,14 +105,16 @@ class MainWindow(QMainWindow):
         self.btn_debug = self.findChild(QPushButton, "btn_nav_debug")
         self.btn_logs = self.findChild(QPushButton, "btn_nav_logs")
         self.btn_settings = self.findChild(QPushButton, "btn_nav_settings")
-
-        self.btn_theme = self.findChild(QPushButton, "btn_theme_toggle")
         self.btn_logout = self.findChild(QPushButton, "btn_logout")
+        
+        # Bind Sidebar Header Components
+        self.label_logo_icon = self.findChild(QLabel, "label_logo_icon")
+        self.label_logo_text = self.findChild(QLabel, "label_logo_text")
 
         self.sidebar_buttons = [
             self.btn_exec, self.btn_proj, self.btn_res,
             self.btn_debug, self.btn_logs, self.btn_settings,
-            self.btn_theme, self.btn_logout
+            self.btn_logout
         ]
 
         # Store original text for restoration
@@ -116,8 +127,8 @@ class MainWindow(QMainWindow):
 
         # Role Management
         if self.role.lower() != "admin":
-            self.btn_settings.setVisible(False)
-            self.btn_debug.setVisible(False) # Maybe hide debug for non-admins?
+            if self.btn_settings: self.btn_settings.setVisible(False)
+            if self.btn_debug: self.btn_debug.setVisible(False)
 
     def setup_icons(self):
         # Apply icons using helper
@@ -127,7 +138,6 @@ class MainWindow(QMainWindow):
         IconHelper.apply_icon(self.btn_debug, "debug", "white")
         IconHelper.apply_icon(self.btn_logs, "logs", "white")
         IconHelper.apply_icon(self.btn_settings, "settings", "white")
-        IconHelper.apply_icon(self.btn_theme, "theme_light", "white")
         IconHelper.apply_icon(self.btn_logout, "logout", "white")
 
     def setup_navigation(self):
@@ -138,15 +148,13 @@ class MainWindow(QMainWindow):
         self.btn_logs.clicked.connect(lambda: self.navigate("logs"))
         self.btn_settings.clicked.connect(lambda: self.navigate("settings"))
 
-        self.btn_theme.clicked.connect(lambda: self.toggle_theme())
         self.btn_logout.clicked.connect(self.on_logout)
-
         self.btn_toggle_sidebar.clicked.connect(self.toggle_sidebar)
 
         # Initialize Views storage
         self.views = {}
 
-        # Eager load logs so they capture everything (redundant with history, but requested)
+        # Eager load logs so they capture everything
         self._get_or_create_view("logs")
 
         # Load Default
@@ -172,10 +180,7 @@ class MainWindow(QMainWindow):
         elif page_name == "logs":
             view = LogsView()
         elif page_name == "settings":
-            # Placeholder for now
-            view = QWidget()
-            lbl = QLabel("Settings Placeholder", view)
-            lbl.setAlignment(Qt.AlignCenter)
+            view = SettingsView()
 
         if view:
             self.views[page_name] = view
@@ -200,6 +205,23 @@ class MainWindow(QMainWindow):
         view = self._get_or_create_view(page_name)
         if view:
             self.stack.setCurrentWidget(view)
+        
+        # Ensure buttons reflect selection visually (optional, if stylesheets handle it via 'checked' state)
+        # The sidebar logic manages checkable buttons?
+        # In .ui, buttons are autoExclusive=true. So clicking one unchecks others.
+        # But programmatically we need to set checked state.
+        
+        btn_map = {
+            "execution": self.btn_exec,
+            "project": self.btn_proj,
+            "results": self.btn_res,
+            "debug": self.btn_debug,
+            "logs": self.btn_logs,
+            "settings": self.btn_settings
+        }
+        
+        if page_name in btn_map and btn_map[page_name]:
+            btn_map[page_name].setChecked(True)
 
     def toggle_sidebar(self):
         width = self.widget_sidebar.width()
@@ -222,15 +244,19 @@ class MainWindow(QMainWindow):
         self.anim2.setEasingCurve(QEasingCurve.InOutQuart)
         self.anim2.start()
 
-        # Toggle Logo Visibility if collapsing
-        logo = self.findChild(QLabel, "label_app_logo")
-        if logo:
-            logo.setVisible(target > 100)
+        # Toggle Text Visibility
+        is_expanding = target > 100
+        
+        # Logo Text
+        if self.label_logo_text:
+            self.label_logo_text.setVisible(is_expanding)
+            
+        # Keep Logo Icon Always Visible (handled by layout)
 
         # Toggle Button Text
         for btn in self.sidebar_buttons:
             if not btn: continue
-            if target < 100:
+            if not is_expanding:
                 # Collapsing: Hide text
                 btn.setText("")
             else:
@@ -238,23 +264,3 @@ class MainWindow(QMainWindow):
                 original = btn.property("original_text")
                 if original is not None:
                     btn.setText(original)
-
-    def toggle_theme(self, force_theme=None):
-        if force_theme:
-            self.current_theme = force_theme
-        else:
-            self.current_theme = AppTheme.DARK if self.current_theme == AppTheme.LIGHT else AppTheme.LIGHT
-            self.settings_manager.save_setting("theme", self.current_theme)
-
-        logger.info(f"Switching theme to {self.current_theme}")
-
-        # Update Toggle Button Icon/Text
-        if self.current_theme == AppTheme.LIGHT:
-            self.btn_theme.setText(" Dark Mode")
-            IconHelper.apply_icon(self.btn_theme, "theme_dark", "white")
-        else:
-            self.btn_theme.setText(" Light Mode")
-            IconHelper.apply_icon(self.btn_theme, "theme_light", "white")
-
-        # Apply Global Theme
-        AppTheme.apply_theme(QApplication.instance(), self.current_theme)
