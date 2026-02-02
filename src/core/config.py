@@ -24,7 +24,7 @@ SERIAL_SETTINGS = {
 logger.info("SERIAL_SETTINGS loaded")
 
 NEUTRAL_OPTIONS = ["NC", "C"]
-VOLTAGE_TAPPINGS = ["NC", "144V", "240V", "288V", "460", "500", "510", "520", "530"]
+VOLTAGE_TAPPINGS = ["NC", "144V", "240V", "288V", "460V", "500V", "510V", "520V", "530V"]
 CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
 
 '''
