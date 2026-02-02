@@ -10,10 +10,12 @@ from src.core.config import SLAVE_DEVICES, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, N
 from src.core.logger import logger
 from src.ui.icons import IconHelper
 
+
 class DebugView(QWidget):
     def __init__(self):
         super().__init__()
         logger.info("Initializing New DebugView")
+
         self.modbus = None
         self.current_com = None
 
@@ -23,6 +25,7 @@ class DebugView(QWidget):
         self.populate_tappings()
         self.connect_signals()
 
+    # -------------------------------------------------
     def load_ui(self):
         loader = QUiLoader()
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,44 +36,113 @@ class DebugView(QWidget):
             logger.error(f"Cannot open debug.ui at {ui_path}")
             raise RuntimeError("Cannot open debug.ui")
 
-        self.ui = loader.load(ui_file, self)
+        # Load UI WITHOUT parent (important for centering)
+        self.ui = loader.load(ui_file)
         ui_file.close()
 
+        # ---------------- SCROLL AREA ----------------
+        from PySide6.QtWidgets import QScrollArea, QHBoxLayout, QFrame
+
+        self.scroll = QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.NoFrame)
+        self.scroll.setStyleSheet("background-color: #f8f9fa;")
+
+        # ---------------- CENTERING CONTAINER ----------------
+        self.container = QWidget()
+        self.container.setStyleSheet("background-color: #f8f9fa;")
+
+        container_layout = QHBoxLayout(self.container)
+        container_layout.setContentsMargins(20, 20, 20, 20)
+
+        container_layout.addStretch(1)
+        container_layout.addWidget(self.ui)
+        container_layout.addStretch(1)
+
+        # Reasonable content width (same idea as old version)
+        self.ui.setMinimumWidth(800)
+        self.ui.setMaximumWidth(1100)
+
+        self.scroll.setWidget(self.container)
+
+        # ---------------- MAIN LAYOUT ----------------
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.ui)
+        layout.addWidget(self.scroll)
         self.setLayout(layout)
 
-        # Widget Binding
+        # ================= Widget Bindings =================
+
         self.cmb_com = self.findChild(QComboBox, "comboBox_comPorts")
+
         self.cmb_r = self.findChild(QComboBox, "combo_r_voltage")
         self.cmb_y = self.findChild(QComboBox, "combo_y_voltage")
         self.cmb_b = self.findChild(QComboBox, "combo_b_voltage")
         self.cmb_n = self.findChild(QComboBox, "combo_neutral")
-        self.cmb_i = self.findChild(QComboBox, "combo_current")
+
+        # Two current taps
+        self.cmb_i1 = self.findChild(QComboBox, "combo_current_1")
+        self.cmb_i2 = self.findChild(QComboBox, "combo_current_2")
 
         self.btn_apply = self.findChild(QWidget, "btn_apply_taps")
         self.btn_reset = self.findChild(QWidget, "btn_reset_taps")
-        self.btn_qr = self.findChild(QWidget, "btn_read_qr")
-        self.txt_qr = self.findChild(QWidget, "txt_qr")
 
-        # Dynamic read buttons for DC
-        self.btn_read_v = self.findChild(QWidget, "btn_read_dc_voltage")
-        self.txt_read_v = self.findChild(QWidget, "txt_dc_voltage")
-        self.btn_read_i = self.findChild(QWidget, "btn_read_dc_current")
-        self.txt_read_i = self.findChild(QWidget, "txt_dc_current")
+        # QR scanners
+        self.btn_qr_1 = self.findChild(QWidget, "btn_read_qr_1")
+        self.txt_qr_1 = self.findChild(QWidget, "txt_qr_1")
+        self.btn_qr_2 = self.findChild(QWidget, "btn_read_qr_2")
+        self.txt_qr_2 = self.findChild(QWidget, "txt_qr_2")
 
+        # AC meters
+        self.btn_read_r_v = self.findChild(QWidget, "btn_read_r_v")
+        self.txt_r_v = self.findChild(QWidget, "txt_r_v")
+        self.btn_read_y_v = self.findChild(QWidget, "btn_read_y_v")
+        self.txt_y_v = self.findChild(QWidget, "txt_y_v")
+        self.btn_read_b_v = self.findChild(QWidget, "btn_read_b_v")
+        self.txt_b_v = self.findChild(QWidget, "txt_b_v")
+
+        # Impedance meters (2x)
+        self.btn_read_rn_r_1 = self.findChild(QWidget, "btn_read_rn_r_1")
+        self.txt_rn_r_1 = self.findChild(QWidget, "txt_rn_r_1")
+        self.btn_read_rn_r_2 = self.findChild(QWidget, "btn_read_rn_r_2")
+        self.txt_rn_r_2 = self.findChild(QWidget, "txt_rn_r_2")
+
+        self.btn_read_yn_r_1 = self.findChild(QWidget, "btn_read_yn_r_1")
+        self.txt_yn_r_1 = self.findChild(QWidget, "txt_yn_r_1")
+        self.btn_read_yn_r_2 = self.findChild(QWidget, "btn_read_yn_r_2")
+        self.txt_yn_r_2 = self.findChild(QWidget, "txt_yn_r_2")
+
+        self.btn_read_bn_r_1 = self.findChild(QWidget, "btn_read_bn_r_1")
+        self.txt_bn_r_1 = self.findChild(QWidget, "txt_bn_r_1")
+        self.btn_read_bn_r_2 = self.findChild(QWidget, "btn_read_bn_r_2")
+        self.txt_bn_r_2 = self.findChild(QWidget, "txt_bn_r_2")
+
+        # DC meters (2x)
+        self.btn_read_dc_v_1 = self.findChild(QWidget, "btn_read_dc_v_1")
+        self.txt_dc_v_1 = self.findChild(QWidget, "txt_dc_v_1")
+        self.btn_read_dc_v_2 = self.findChild(QWidget, "btn_read_dc_v_2")
+        self.txt_dc_v_2 = self.findChild(QWidget, "txt_dc_v_2")
+
+        self.btn_read_dc_i_1 = self.findChild(QWidget, "btn_read_dc_i_1")
+        self.txt_dc_i_1 = self.findChild(QWidget, "txt_dc_i_1")
+        self.btn_read_dc_i_2 = self.findChild(QWidget, "btn_read_dc_i_2")
+        self.txt_dc_i_2 = self.findChild(QWidget, "txt_dc_i_2")
+
+        # Rescan COM on click
         self.cmb_com.installEventFilter(self)
 
+    # -------------------------------------------------
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_apply, "check", "white")
         IconHelper.apply_icon(self.btn_reset, "times", "black")
 
+    # -------------------------------------------------
     def eventFilter(self, obj, event):
         if obj == self.cmb_com and event.type() == QEvent.MouseButtonPress:
             self.populate_com_ports()
         return super().eventFilter(obj, event)
 
+    # -------------------------------------------------
     def populate_com_ports(self):
         self.cmb_com.blockSignals(True)
         self.cmb_com.clear()
@@ -79,26 +151,53 @@ class DebugView(QWidget):
             self.cmb_com.addItem(p.device)
         self.cmb_com.blockSignals(False)
 
+    # -------------------------------------------------
     def populate_tappings(self):
         self.cmb_r.addItems(VOLTAGE_TAPPINGS)
         self.cmb_y.addItems(VOLTAGE_TAPPINGS)
         self.cmb_b.addItems(VOLTAGE_TAPPINGS)
         self.cmb_n.addItems(NEUTRAL_OPTIONS)
-        self.cmb_i.addItems(CURRENT_TAPPINGS)
 
+        # 🔹 CHANGED: two current taps
+        self.cmb_i1.addItems(CURRENT_TAPPINGS)
+        self.cmb_i2.addItems(CURRENT_TAPPINGS)
+
+    # -------------------------------------------------
     def connect_signals(self):
+
+        # ================== APPLY / RESET ==================
         self.btn_apply.clicked.connect(self.apply_all_taps)
         self.btn_reset.clicked.connect(self.reset_all_relays)
-        self.btn_qr.clicked.connect(lambda: self.read_qr_code(self.txt_qr))
 
-        if self.btn_read_v:
-            self.btn_read_v.clicked.connect(lambda: self.read_modbus("dc_voltage", self.txt_read_v))
-        if self.btn_read_i:
-            self.btn_read_i.clicked.connect(lambda: self.read_modbus("dc_current", self.txt_read_i))
+        # ================== QR SCANNERS (2) ==================
+        self.btn_qr_1.clicked.connect(lambda: self.read_qr_code("QR_SCANNER_1", self.txt_qr_1))
+        self.btn_qr_2.clicked.connect(lambda: self.read_qr_code("QR_SCANNER_2", self.txt_qr_2))
+
+        # ================== AC VOLTAGE (SINGLE METER) ==================
+        self.btn_read_r_v.clicked.connect(lambda: self.read_modbus("r_v", self.txt_r_v))
+        self.btn_read_y_v.clicked.connect(lambda: self.read_modbus("y_v", self.txt_y_v))
+        self.btn_read_b_v.clicked.connect(lambda: self.read_modbus("b_v", self.txt_b_v))
+
+        # ================== IMPEDANCE METERS (2) ==================
+        self.btn_read_rn_r_1.clicked.connect(lambda: self.read_modbus("imp_rn_1", self.txt_rn_r_1))
+        self.btn_read_rn_r_2.clicked.connect(lambda: self.read_modbus("imp_rn_2", self.txt_rn_r_2))
+
+        self.btn_read_yn_r_1.clicked.connect(lambda: self.read_modbus("imp_yn_1", self.txt_yn_r_1))
+        self.btn_read_yn_r_2.clicked.connect(lambda: self.read_modbus("imp_yn_2", self.txt_yn_r_2))
+
+        self.btn_read_bn_r_1.clicked.connect(lambda: self.read_modbus("imp_bn_1", self.txt_bn_r_1))
+        self.btn_read_bn_r_2.clicked.connect(lambda: self.read_modbus("imp_bn_2", self.txt_bn_r_2))
+
+        # ================== DC VOLTAGE METERS (2) ==================
+        self.btn_read_dc_v_1.clicked.connect(lambda: self.read_modbus("dc_v", self.txt_dc_v_1))
+        self.btn_read_dc_v_2.clicked.connect(lambda: self.read_modbus("dc_v", self.txt_dc_v_2))
+
+        # ================== DC CURRENT METERS (2) ==================
+        self.btn_read_dc_i_1.clicked.connect(lambda: self.read_modbus("dc_i", self.txt_dc_i_1))
+        self.btn_read_dc_i_2.clicked.connect(lambda: self.read_modbus("dc_i", self.txt_dc_i_2))
 
     # =========================================================================
-    # LOGIC (Ported)
-    # =========================================================================
+
 
     def _get_modbus(self):
         com = self.cmb_com.currentText()
@@ -106,11 +205,13 @@ class DebugView(QWidget):
             raise RuntimeError("COM not selected")
         if self.modbus and self.current_com == com:
             return self.modbus
-        if self.modbus: self.modbus.close()
+        if self.modbus:
+            self.modbus.close()
         self.modbus = ModbusRTU(port=com)
         self.current_com = com
         return self.modbus
 
+    # -------------------------------------------------
     def apply_all_taps(self):
         try:
             mb = self._get_modbus()
@@ -119,7 +220,8 @@ class DebugView(QWidget):
             s = plc["slave_id"]
 
             # Helper to write
-            def w(coil, state): mb.write_coil(s, coil, state)
+            def w(coil, state):
+                mb.write_coil(s, coil, state)
 
             # Neutral
             w(c["NEUTRAL"], self.cmb_n.currentText() == "C")
@@ -139,11 +241,17 @@ class DebugView(QWidget):
                 if t != "NC": w(c[f"B_{t.replace('V','')}"], False)
             if bv != "NC": w(c[f"B_{bv.replace('V','')}"], True)
 
-            # Current
-            cur = self.cmb_i.currentText()
+            # 🔹 CHANGED: Current 1 & 2
             for i in CURRENT_TAPPINGS:
-                if i != "0": w(c[f"CUR_{i.replace('.','_')}"], False)
-            if cur != "0": w(c[f"CUR_{cur.replace('.','_')}"], True)
+                if i != "0":
+                    w(c[f"CUR1_{i.replace('.','_')}"], False)
+                    w(c[f"CUR2_{i.replace('.','_')}"], False)
+
+            if self.cmb_i1.currentText() != "0":
+                w(c[f"CUR1_{self.cmb_i1.currentText().replace('.','_')}"], True)
+
+            if self.cmb_i2.currentText() != "0":
+                w(c[f"CUR2_{self.cmb_i2.currentText().replace('.','_')}"], True)
 
             logger.info("Taps applied")
 
@@ -153,6 +261,7 @@ class DebugView(QWidget):
         finally:
             self._close_modbus()
 
+    # -------------------------------------------------
     def reset_all_relays(self):
         try:
             mb = self._get_modbus()
@@ -166,35 +275,44 @@ class DebugView(QWidget):
         finally:
             self._close_modbus()
 
-    def read_qr_code(self, field):
+    # -------------------------------------------------
+    def read_qr_code(self, scanner_name, field):
         try:
             com = self.cmb_com.currentText()
             if com.startswith("--"): return
-            qr = SLAVE_DEVICES["QR_SCANNER"]
+            qr = SLAVE_DEVICES[scanner_name]
             raw = RawSerial(port=com)
             rx = raw.write_read(qr["read_cmd"])
             raw.close()
             field.setText(rx.decode(errors="ignore").strip())
         except Exception as e:
-            logger.error(f"QR Error: {e}")
+            logger.error(f"QR Error ({scanner_name}): {e}")
 
+    # -------------------------------------------------
     def read_modbus(self, key, field):
         try:
             mb = self._get_modbus()
             for _, dev in SLAVE_DEVICES.items():
                 if "reads" in dev and key in dev["reads"]:
                     reg = dev["registers"][dev["reads"][key]]
-                    val = mb.read_float(dev["slave_id"], reg, endian=dev.get("endian","ABCD"))
+                    val = mb.read_float(
+                        dev["slave_id"],
+                        reg,
+                        endian=dev.get("endian","ABCD")
+                    )
                     field.setText(f"{val:.3f}")
                     return
         except Exception as e:
-            logger.error(f"Read Error: {e}")
+            logger.error(f"Read Error ({key}): {e}")
         finally:
             self._close_modbus()
 
+    # -------------------------------------------------
     def _close_modbus(self):
         if self.modbus:
-            try: self.modbus.close()
-            except: pass
+            try:
+                self.modbus.close()
+            except Exception:
+                pass
             self.modbus = None
             self.current_com = None

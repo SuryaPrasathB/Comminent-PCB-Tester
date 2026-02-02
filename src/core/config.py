@@ -24,39 +24,57 @@ SERIAL_SETTINGS = {
 logger.info("SERIAL_SETTINGS loaded")
 
 NEUTRAL_OPTIONS = ["NC", "C"]
-VOLTAGE_TAPPINGS = ["NC", "144V", "240V", "288V", "460V", "500V", "510V", "520V", "530V"]
+VOLTAGE_TAPPINGS = ["NC", "144V", "240V", "265V", "500V", "510V", "520V", "530V"]
 CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
 
 '''
+    //=======================================================
+    Transformer tapping:
+
+    '138V': 1, // VLL = 240; 
+    '144V': 2,
+    '240V': 3,
+    '265V': 4,
+    '288V': 5, // VLL = 500; 
+    '295V': 6, // VLL = 510; 
+    '300V': 7, // VLL = 520; 
+    '306V': 8, // VLL = 530; 
+    //=======================================================
+     PLC Coil mapping:
+
     'NEUTRAL': 0,
 
-    'R_144': 1,
-    'R_240': 2,
-    'R_288': 3,
-    'R_460': 4,
-    'R_500': 5,
-    'R_510': 6,
-    'R_520': 7,
-    'R_530': 8,
+    // ================= R Phase =================
+    'R_138': 1,   // VLL = 240
+    'R_144': 2,
+    'R_240': 3,
+    'R_265': 4,
+    'R_288': 5,   // VLL = 500
+    'R_295': 6,   // VLL = 510
+    'R_300': 7,   // VLL = 520
+    'R_306': 8,   // VLL = 530
 
-    'Y_144': 9,
-    'Y_240': 10,
-    'Y_288': 11,
-    'Y_460': 12,
-    'Y_500': 13,
-    'Y_510': 14,
-    'Y_520': 15,
-    'Y_530': 16,
+    // ================= Y Phase =================
+    'Y_138': 9,   // VLL = 240
+    'Y_144': 10,
+    'Y_240': 11,
+    'Y_265': 12,
+    'Y_288': 13,  // VLL = 500
+    'Y_295': 14,  // VLL = 510
+    'Y_300': 15,  // VLL = 520
+    'Y_306': 16,  // VLL = 530
 
-    'B_144': 17,
-    'B_240': 18,
-    'B_288': 19,
-    'B_460': 20,
-    'B_500': 21,
-    'B_510': 22,
-    'B_520': 23,
-    'B_530': 24,
+    // ================= B Phase =================
+    'B_138': 17,  // VLL = 240
+    'B_144': 18,
+    'B_240': 19,
+    'B_265': 20,
+    'B_288': 21,  // VLL = 500
+    'B_295': 22,  // VLL = 510
+    'B_300': 23,  // VLL = 520
+    'B_306': 24   // VLL = 530
 
+    //=========================================
     'CUR1_0_5':  25, // 1st PCB
     'CUR1_1_25': 26, // 1st PCB
     'CUR1_2_5':  27, // 1st PCB
@@ -65,6 +83,7 @@ CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
     'CUR2_1_25': 29, // 2nd PCB
     'CUR2_2_5':  30, // 2nd PCB
 
+    //=============================================
     'IMP1_R': 31, // 1st PCB
     'IMP1_Y': 32, // 1st PCB
     'IMP1_B': 33  // 1st PCB
@@ -72,12 +91,17 @@ CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
 
     'IMP2_R': 35, // 2nd PCB
     'IMP2_Y': 36, // 2nd PCB
-    'IMP2_B': 37  // 2nd PCB
+    'IMP2_B': 37  // 2nd PCB                                                                                                                                        
     'IMP2_N': 38  // 1st PCB
+    //=============================================
 
     Voltage Part - 25 No.s
-    Current      - 3 + 3
+    Current      - 3 + 3  
     Impedance    - 4 + 4
+
+    //=======================================================
+    UI representation:
+
 '''
 
 
@@ -127,7 +151,7 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
 
 
 # =====================================================
-# MODBUS DEVICE DEFINITIONS (SINGLE SOURCE OF TRUTH)
+# SLAVE DEVICE DEFINITIONS (SINGLE SOURCE OF TRUTH)
 # =====================================================
 SLAVE_DEVICES = {
 
@@ -175,9 +199,9 @@ SLAVE_DEVICES = {
             "B_N_IMP": 0x0000,
         },
         "reads": {
-            "rn_r": "R_N_IMP",
-            "yn_r": "Y_N_IMP",
-            "bn_r": "B_N_IMP",
+            "imp_rn_1": "R_N_IMP",
+            "imp_yn_1": "Y_N_IMP",
+            "imp_bn_1": "B_N_IMP",
         },
         "display_name": "Impedance Meter_1"
     },
@@ -191,9 +215,9 @@ SLAVE_DEVICES = {
             "B_N_IMP": 0x0000,
         },
         "reads": {
-            "rn_r": "R_N_IMP",
-            "yn_r": "Y_N_IMP",
-            "bn_r": "B_N_IMP",
+            "imp_rn_2": "R_N_IMP",
+            "imp_yn_2": "Y_N_IMP",
+            "imp_bn_2": "B_N_IMP",
         },
         "display_name": "Impedance Meter 2"
     },
@@ -226,10 +250,10 @@ SLAVE_DEVICES = {
         "slave_id": 18,
         "endian": "ABCD",
         "registers": {
-            "DC_VOLTAGE": 0x0BB7,
+            "DC_CURRENT": 0x0BB7,
         },
         "reads": {
-            "dc_v": "DC_VOLTAGE",
+            "dc_v": "DC_CURRENT",
         },
         "display_name": "Dc Ammeter 1"
     },
@@ -291,75 +315,44 @@ logger.info(f"Database configuration loaded | DB={DB_CONFIG['database']}")
 
 # === Default Test Cases (33 conditions in the requested format) ===
 default_test_cases = [
-    {"sn": 1, "desc": "Impedance test b/w R-N, Y-N, B-N)", "r": "NC", "y": "NC", "b": "NC", "n": "NC", "v": "NA",
-     "i": "NA"},
-
-    {"sn": 2, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",
-     "i": "0A"},
-    {"sn": 3, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",
-     "i": "0.5A"},
-    {"sn": 4, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",
-     "i": "1.25A"},
-    {"sn": 5, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",
-     "i": "2.5A"},
-
-    {"sn": 6, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",
-     "i": "0A"},
-    {"sn": 7, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",
-     "i": "0.5A"},
-    {"sn": 8, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",
-     "i": "1.25A"},
-    {"sn": 9, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",
-     "i": "2.5A"},
-
+    {"sn": 1, "desc": "Impedance test b/w R-N, Y-N, B-N)", "r": "NC", "y": "NC", "b": "NC", "n": "NC", "v": "NA",  "i": "NA"},
+    {"sn": 2, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 3, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 4, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 5, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",  "i": "2.5A"},
+    {"sn": 6, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",  "i": "0A"},
+    {"sn": 7, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",  "i": "0.5A"},
+    {"sn": 8, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",  "i": "1.25A"},
+    {"sn": 9, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "NC", "v": "5V",  "i": "2.5A"},
     {"sn": 10, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V", "i": "0A"},
-    {"sn": 11, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V",
-     "i": "0.5A"},
-    {"sn": 12, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V",
-     "i": "1.25A"},
-    {"sn": 13, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V",
-     "i": "2.5A"},
-
+    {"sn": 11, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V",  "i": "0.5A"},
+    {"sn": 12, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V",  "i": "1.25A"},
+    {"sn": 13, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V",  "i": "2.5A"},
     {"sn": 14, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "0A"},
     {"sn": 15, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "0.5A"},
     {"sn": 16, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "1.25A"},
     {"sn": 17, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "2.5A"},
+    {"sn": 18, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 19, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 20, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 21, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "2.5A"},
+    {"sn": 22, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 23, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 24, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 25, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",  "i": "2.5A"},
+    {"sn": 26, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 27, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 28, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 29, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "2.5A"},
+    {"sn": 30, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 31, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 32, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 33, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "2.5A"},
+    {"sn": 34, "desc": "Working at higher voltage condition", "r": "500V", "y": "500V", "b": "500V", "n": "NC",  "v": "0V", "i": "1.25A"},
+    {"sn": 35, "desc": "Working at higher voltage condition", "r": "510V", "y": "510V", "b": "510V", "n": "NC",  "v": "0V", "i": "1.25A"},
+    {"sn": 36, "desc": "Working at higher voltage condition", "r": "520V", "y": "520V", "b": "520V", "n": "NC",  "v": "0V", "i": "1.25A"},
+    {"sn": 37, "desc": "Working at higher voltage condition", "r": "530V", "y": "530V", "b": "530V", "n": "NC",  "v": "0V", "i": "1.25A"},
 
-    {"sn": 18, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",
-     "i": "0A"},
-    {"sn": 19, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",
-     "i": "0.5A"},
-    {"sn": 20, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",
-     "i": "1.25A"},
-    {"sn": 21, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",
-     "i": "2.5A"},
-
-    {"sn": 22, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",
-     "i": "0A"},
-    {"sn": 23, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",
-     "i": "0.5A"},
-    {"sn": 24, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",
-     "i": "1.25A"},
-    {"sn": 25, "desc": "Working under voltage variations", "r": "288V", "y": "288V", "b": "288V", "n": "C", "v": "5V",
-     "i": "2.5A"},
-
-    {"sn": 26, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "0A"},
-    {"sn": 27, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "0.5A"},
-    {"sn": 28, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "1.25A"},
-    {"sn": 29, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "2.5A"},
-
-    {"sn": 30, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "0A"},
-    {"sn": 31, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "0.5A"},
-    {"sn": 32, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "1.25A"},
-    {"sn": 33, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",
-     "i": "2.5A"},
 ]
 
 

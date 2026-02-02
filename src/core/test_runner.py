@@ -1,4 +1,6 @@
 # test_runner.py
+import math
+
 from PySide6.QtCore import QThread, Signal
 import time
 
@@ -257,7 +259,7 @@ class TestRunner(QThread):
                 return
 
         # =================================================
-        # 2️⃣ APPLY RELAYS
+        # 2️⃣ OTHER TEST CASES
         # =================================================
         self._sep()
         try:
@@ -267,42 +269,66 @@ class TestRunner(QThread):
             present_slave_name = plc.get("display_name")
 
             # ---- Neutral (NC = OFF, C = ON) ----
-            self.modbus.write_coil(plc_slave, coils["NEUTRAL"], tc["n"] == "C")
+
+            # =================================================
+            # NEUTRAL OPTIONS
+            # =================================================
+            # ---- Neutral (NC = OFF, C = ON) ----
+            neutral_state = (tc["n"] == "C")
+            self.modbus.write_coil(plc_slave, coils["NEUTRAL"], neutral_state)
+
 
             # =================================================
             # VOLTAGE TAPS
             # =================================================
-
             # R phase (OFF all)
             for tap in VOLTAGE_TAPPINGS:
                 tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tap.replace('V', '')}"], False)
             # R phase (ON selected)
-            tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
+            if not neutral_state: #If Neutral Option is NC
+                voltage = int(tc["r"].replace("V", ""))      # extract number from string like "240V"
+                phase_voltage = math.floor(voltage / 1.732)  # divide by sqrt(3) ≈ 1.732 and floor
+                tc["r"] = f"{phase_voltage}V"                # convert back to string with V
+
+                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
+            else:
+                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
 
             # Y phase (OFF all)
             for tap in VOLTAGE_TAPPINGS:
                 tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"Y_{tap.replace('V', '')}"], False)
             # Y phase (ON selected)
-            tc["y"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"Y_{tc['y'].replace('V', '')}"], True)
+            if not neutral_state:  # If Neutral Option is NC
+                voltage = int(tc["r"].replace("V", ""))  # extract number from string like "240V"
+                phase_voltage = math.floor(voltage / 1.732)  # divide by sqrt(3) ≈ 1.732 and floor
+                tc["r"] = f"{phase_voltage}V"  # convert back to string with V
+
+                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
+            else:
+                tc["y"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"Y_{tc['y'].replace('V', '')}"], True)
 
             # B phase (OFF all)
             for tap in VOLTAGE_TAPPINGS:
                 tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"B_{tap.replace('V', '')}"], False)
             # B phase (ON selected)
-            tc["b"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"B_{tc['b'].replace('V', '')}"], True)
+            if not neutral_state:  # If Neutral Option is NC
+                voltage = int(tc["r"].replace("V", ""))  # extract number from string like "240V"
+                phase_voltage = math.floor(voltage / 1.732)  # divide by sqrt(3) ≈ 1.732 and floor
+                tc["r"] = f"{phase_voltage}V"  # convert back to string with V
+
+                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
+            else:
+                tc["b"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"B_{tc['b'].replace('V', '')}"], True)
 
             # =================================================
             # CURRENT TAPS
             # =================================================
-
             # OFF all current relays
             for cur in CURRENT_TAPPINGS:
                 cur != "0A" and self.modbus.write_coil(plc_slave,coils[f"CUR_{cur.replace('A', '').replace('.', '_')}"], False)
-
-
             # ON selected current relay
             tc["i"] != "0A" and self.modbus.write_coil(plc_slave,coils[f"CUR_{tc['i'].replace('A', '').replace('.', '_')}"], True)
-
+            # =================================================
 
             print("[TEST] Waiting for stabilization (cool-down)")
             logger.info("Waiting for stabilization")
