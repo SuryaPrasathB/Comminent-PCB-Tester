@@ -13,6 +13,10 @@ class LogsView(QWidget):
         # Connect to global logger
         logger.log_signal.connect(self.append_log)
 
+        # Load existing history
+        for line in logger.get_history():
+            self.append_log(line)
+
     def load_ui(self):
         loader = QUiLoader()
         base_dir = os.path.dirname(os.path.abspath(__file__))

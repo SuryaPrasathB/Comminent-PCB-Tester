@@ -34,6 +34,7 @@ class AppLogger(QObject):
         self.log_file = os.path.join(
             self.log_dir, f"{app_name}_{timestamp}.log"
         )
+        self.history = []
 
         self.info("AppLogger initialized")
 
@@ -70,6 +71,8 @@ class AppLogger(QObject):
         except Exception:
             pass
 
+        self.history.append(full_line)
+
         # Full log (Logs tab)
         self.log_signal.emit(full_line)
 
@@ -78,6 +81,10 @@ class AppLogger(QObject):
         self.status_signal.emit(message)
 
     # -------------------------------------------------
+    def get_history(self):
+        """Returns the list of all logs since application start."""
+        return self.history
+
     def info(self, message: str):
         self._log("INFO", message)
 

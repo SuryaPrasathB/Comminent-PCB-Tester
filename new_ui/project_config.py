@@ -1,12 +1,13 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QCheckBox, QComboBox, QMessageBox,
-    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout, QSizePolicy
+    QVBoxLayout, QHeaderView, QAbstractItemView, QHBoxLayout, QSizePolicy, QGroupBox
 )
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import QFile, QIODevice, Qt, QEvent
-from PySide6.QtGui import QPixmap, QPainter
+from PySide6.QtCore import QFile, QIODevice, Qt, QEvent, QPoint, QItemSelectionModel, QItemSelection
+from new_ui.circuit_viewer import CircuitPreviewWidget
+from PySide6.QtGui import QPixmap, QPainter, QMouseEvent
 
 from config import default_test_cases, VOLTAGE_TAPPINGS, NEUTRAL_OPTIONS
 from db_utils import save_project, load_projects, load_project_rows, delete_project
@@ -18,6 +19,274 @@ from new_ui.icons import IconHelper
 class NoWheelComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()
+
+class DraggableComboBox(NoWheelComboBox):
+    def __init__(self, table):
+        super().__init__()
+        self.table = table
+        self.start_pos = None
+        self.drag_active = False
+        self.pending_bulk = False
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.start_pos = event.pos()
+            self.start_row = self._get_row()
+
+            current_row = self.start_row
+            if current_row >= 0:
+                self.table.setCurrentCell(current_row, self._get_col())
+
+            modifiers = event.modifiers()
+
+            if modifiers & Qt.ControlModifier:
+                if current_row >= 0:
+                    model = self.table.selectionModel()
+                    idx = self.table.model().index(current_row, 0)
+                    model.select(idx, QItemSelectionModel.Toggle | QItemSelectionModel.Rows)
+            elif modifiers & Qt.ShiftModifier:
+                # Range selection from anchor
+                anchor = self.table.currentRow() # This is the anchor usually
+                if anchor == -1: anchor = current_row
+
+                self._select_range(anchor, current_row)
+            else:
+                # Normal click: Clear and select, BUT if we are starting a drag,
+                # we might want to keep selection if already selected?
+                # "Click behavior"
+                item = self.table.item(current_row, 0)
+                if item and not item.isSelected():
+                    self.table.clearSelection()
+                    self.table.selectRow(current_row)
+
+            # If we just click, we want the popup. But we wait for release to confirm it's not a drag.
+            # We accept the event so parent doesn't handle it yet.
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self.start_pos:
+            if (event.pos() - self.start_pos).manhattanLength() > 5:
+                if not self.drag_active:
+                    self.drag_active = True
+                    self.grabMouse()
+                    # Initialize drag selection range
+                    if self.start_row >= 0:
+                        self.table.clearSelection()
+                        self.table.selectRow(self.start_row)
+
+        if self.drag_active:
+            # Range Select from start_row to current_row
+            pos = self.table.viewport().mapFromGlobal(event.globalPos())
+            idx = self.table.indexAt(pos)
+            if idx.isValid():
+                current_row = idx.row()
+                if self.start_row >= 0:
+                    self._select_range(self.start_row, current_row)
+
+    def _select_range(self, start, end):
+        r_min, r_max = min(start, end), max(start, end)
+        selection = QItemSelection(
+            self.table.model().index(r_min, 0),
+            self.table.model().index(r_max, self.table.columnCount()-1)
+        )
+        self.table.selectionModel().select(selection, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
+
+    def mouseReleaseEvent(self, event):
+        if self.drag_active:
+            self.drag_active = False
+            self.releaseMouse()
+            self.start_pos = None
+
+            # Find target widget under mouse
+            pos = self.table.viewport().mapFromGlobal(event.globalPos())
+            idx = self.table.indexAt(pos)
+
+            target_widget = self
+            if idx.isValid():
+                w = self.table.cellWidget(idx.row(), idx.column())
+                if isinstance(w, DraggableComboBox):
+                    target_widget = w
+
+            # Prepare for bulk update
+            target_widget.pending_bulk = True
+
+            # Safely connect signal (disconnect old if exists to avoid dupes)
+            try:
+                target_widget.activated.disconnect(target_widget._on_bulk_activated)
+            except: pass
+            target_widget.activated.connect(target_widget._on_bulk_activated)
+
+            target_widget.showPopup()
+
+        else:
+            # Normal click
+            self.start_pos = None
+            self.showPopup()
+
+    def _on_bulk_activated(self, index):
+        if self.pending_bulk:
+            val = self.currentText()
+            col = self._get_col()
+            # Apply to all selected rows
+            selected_rows = set()
+            for item in self.table.selectedItems():
+                selected_rows.add(item.row())
+
+            current_row = self.table.currentRow()
+
+            for r in selected_rows:
+                w = self.table.cellWidget(r, col)
+                if isinstance(w, QComboBox):
+                    if r == current_row:
+                        # Allow signal to fire for the current row so the diagram updates once
+                        w.setCurrentText(val)
+                    else:
+                        # Block signals for others to prevent redundant updates
+                        w.blockSignals(True)
+                        w.setCurrentText(val)
+                        w.blockSignals(False)
+
+            self.pending_bulk = False
+
+    def hidePopup(self):
+        super().hidePopup()
+        self.pending_bulk = False
+
+    def _get_row(self):
+        pos = self.table.viewport().mapFromGlobal(self.mapToGlobal(QPoint(0,0)))
+        idx = self.table.indexAt(pos)
+        return idx.row() if idx.isValid() else -1
+
+    def _get_col(self):
+        pos = self.table.viewport().mapFromGlobal(self.mapToGlobal(QPoint(0,0)))
+        idx = self.table.indexAt(pos)
+        return idx.column() if idx.isValid() else -1
+
+class DraggableCheckboxContainer(QWidget):
+    def __init__(self, table):
+        super().__init__()
+        self.table = table
+        self.setObjectName("checkbox_container")
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignCenter)
+
+        self.checkbox = QCheckBox()
+        self.checkbox.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.checkbox.setFocusPolicy(Qt.NoFocus)
+        layout.addWidget(self.checkbox)
+
+        self.drag_active = False
+        self.target_state = False
+        self.last_drag_row = -1
+
+    def isChecked(self):
+        return self.checkbox.isChecked()
+
+    def setChecked(self, state):
+        self.checkbox.setChecked(state)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.target_state = not self.checkbox.isChecked()
+            self.checkbox.setChecked(self.target_state)
+
+            current_row = self._get_row()
+            if current_row >= 0:
+                self.table.setCurrentCell(current_row, 1)
+                self.last_drag_row = current_row
+
+            modifiers = event.modifiers()
+            if modifiers & Qt.ControlModifier:
+                if current_row >= 0:
+                    model = self.table.selectionModel()
+                    idx = self.table.model().index(current_row, 0)
+                    model.select(idx, QItemSelectionModel.Toggle | QItemSelectionModel.Rows)
+            elif modifiers & Qt.ShiftModifier:
+                anchor = self.table.currentRow()
+                if anchor == -1: anchor = current_row
+                self._select_range(anchor, current_row)
+            else:
+                # Exclusive selection unless already selected
+                item = self.table.item(current_row, 0)
+                if item and not item.isSelected():
+                    self.table.clearSelection()
+                    self.table.selectRow(current_row)
+
+            # Always apply to current (and selection if any)
+            # Standard: if simple click, we toggled current.
+            # If multiple selected, we toggle all?
+            # "Apply the same checked/unchecked state to all selected rows"
+
+            # Force selection of current if it wasn't
+            if not self.table.item(current_row, 0).isSelected():
+                self.table.selectRow(current_row)
+
+            # Bulk apply
+            selected_rows = set(i.row() for i in self.table.selectedItems())
+            for r in selected_rows:
+                self._update_row_checkbox(r, self.target_state)
+
+            self.drag_active = True
+            self.grabMouse()
+
+    def mouseMoveEvent(self, event):
+        if self.drag_active:
+            pos = self.table.viewport().mapFromGlobal(event.globalPos())
+            idx = self.table.indexAt(pos)
+            if idx.isValid():
+                current_row = idx.row()
+
+                # Interpolate if we moved too fast
+                if self.last_drag_row != -1:
+                    step = 1 if current_row > self.last_drag_row else -1
+                    # Range from last_drag_row (exclusive) to current (inclusive)
+                    # Actually, we want to cover the path.
+
+                    r_start = self.last_drag_row
+                    r_end = current_row
+
+                    # We already handled last_drag_row. So start from next.
+                    # Wait, if we moved up/down, we want to toggle everything in between.
+
+                    rows_to_process = []
+                    if r_start == r_end:
+                        rows_to_process = [r_start] # Already processed?
+                    else:
+                        for r in range(r_start, r_end + step, step):
+                            rows_to_process.append(r)
+
+                    for r in rows_to_process:
+                        if not self.table.item(r, 0).isSelected():
+                            self.table.selectRow(r)
+                        self._update_row_checkbox(r, self.target_state)
+
+                self.last_drag_row = current_row
+
+    def _select_range(self, start, end):
+        r_min, r_max = min(start, end), max(start, end)
+        selection = QItemSelection(
+            self.table.model().index(r_min, 0),
+            self.table.model().index(r_max, self.table.columnCount()-1)
+        )
+        self.table.selectionModel().select(selection, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
+
+    def mouseReleaseEvent(self, event):
+        if self.drag_active:
+            self.drag_active = False
+            self.releaseMouse()
+            pass
+
+    def _get_row(self):
+        pos = self.table.viewport().mapFromGlobal(self.mapToGlobal(QPoint(0,0)))
+        idx = self.table.indexAt(pos)
+        return idx.row() if idx.isValid() else -1
+
+    def _update_row_checkbox(self, row, state):
+        widget = self.table.cellWidget(row, 1)
+        if isinstance(widget, DraggableCheckboxContainer):
+            widget.setChecked(state)
 
 class AntialiasedSvgWidget(QSvgWidget):
     def paintEvent(self, event):
@@ -76,28 +345,25 @@ class ProjectConfigView(QWidget):
         self.txt_project = self.findChild(QWidget, "lineEdit_projectName")
         self.cmb_projects = self.findChild(QWidget, "comboBox_projects")
         
-        # Replace QLabel with QSvgWidget
+        # Replace QLabel with CircuitPreviewWidget inside a GroupBox
         self.lbl_circuit = self.findChild(QWidget, "label_circuitDiagram")
         if self.lbl_circuit:
             parent = self.lbl_circuit.parentWidget()
             layout = parent.layout()
             if layout:
-                # Create a container to center the diagram
-                self.circuit_container = QWidget()
-                container_layout = QVBoxLayout(self.circuit_container)
-                container_layout.setContentsMargins(0, 0, 0, 0)
-                # Removed AlignCenter to allow the widget to expand horizontally;
-                # SVG's preserveAspectRatio="xMidYMid meet" handles the actual centering/aspect ratio.
+                # Create a container (GroupBox) for the diagram
+                self.circuit_group = QGroupBox("Circuit Preview")
+                self.circuit_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #ccc; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px; }")
+                group_layout = QVBoxLayout(self.circuit_group)
+                group_layout.setContentsMargins(10, 20, 10, 10)
 
-                self.svg_circuit = AntialiasedSvgWidget()
-                # Use Preferred size policy so it respects SVG size hint but can shrink/grow slightly if needed
-                # However, with AlignCenter in layout, it should stick to its size hint or available space.
+                self.svg_circuit = CircuitPreviewWidget()
                 self.svg_circuit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
-                container_layout.addWidget(self.svg_circuit)
+                group_layout.addWidget(self.svg_circuit)
 
                 # Replace the widget in-place to preserve layout order
-                layout.replaceWidget(self.lbl_circuit, self.circuit_container)
+                layout.replaceWidget(self.lbl_circuit, self.circuit_group)
                 self.lbl_circuit.deleteLater()
             else:
                 logger.error("Could not find layout for circuit label")
@@ -111,33 +377,66 @@ class ProjectConfigView(QWidget):
 
         # Table Config
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.verticalHeader().setVisible(False)
         
-        # Row highlighting style
-        self.table.setStyleSheet("""
-            QTableWidget::item:selected {
-                background-color: #0078d7;
-                color: white;
+        # =========================================================================
+        # STYLE FIX: Row Highlighting & Checkbox Visibility
+        # =========================================================================
+        # Resolve path for checkbox icon to ensure it's loaded correctly
+        check_icon_path = os.path.join(base_dir, "forms", "checkbox_checked.svg").replace("\\", "/")
+
+        self.table.setStyleSheet(f"""
+            /* Row Selection: Soft Blue-Grey to contrast with Checkboxes */
+            QTableWidget::item:selected {{
+                background-color: #0078D7;
+                color: #1a1a1a;
                 font-weight: bold;
-            }
+            }}
+            QTableWidget::item:selected:!active {{
+                background-color: #0078D7;
+                color: #1a1a1a;
+            }}
+
+            /* CUSTOM CHECKBOX STYLING
+               Explicitly styling indicator to ensure white background and black checkmark.
+            */
+            QCheckBox {{
+                spacing: 0px;
+                background: transparent;
+                color: black;
+            }}
+            QCheckBox::indicator {{
+                width: 14px;
+                height: 14px;
+                border: 1px solid #888;
+                background: white;
+                border-radius: 2px;
+            }}
+            QCheckBox::indicator:checked {{
+                image: url({check_icon_path});
+                border: 1px solid #555;
+            }}
+            QCheckBox::indicator:hover {{
+                border: 1px solid #007ACC;
+            }}
         """)
         
     def configure_table_headers(self):
         header = self.table.horizontalHeader()
-        
-        # "R Tap", "Y Tap", "B Tap", "Neutral", "Exp V", "Exp I" (indices 3,4,5,6,7,8)
-        fixed_width = 80
-        for i in [3, 4, 5, 6, 7, 8]:
-            header.setSectionResizeMode(i, QHeaderView.Fixed)
-            self.table.setColumnWidth(i, fixed_width)
-            
-        # Description (index 2) - stretch
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setStretchLastSection(False)
         
         # S.No (0) and Enable (1) - ResizeToContents
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+
+        # Description (index 2) - stretch
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+
+        # "R Tap", "Y Tap", "B Tap", "Neutral", "Exp V", "Exp I" (indices 3-8)
+        # Resize to contents to keep them compact and centered
+        for i in range(3, 9):
+            header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
 
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_save, "save", "white")
@@ -152,6 +451,7 @@ class ProjectConfigView(QWidget):
         self.btn_delete.clicked.connect(self.delete_current_project)
         self.cmb_projects.currentIndexChanged.connect(self.load_selected_project)
         self.table.itemSelectionChanged.connect(self.on_row_selected)
+        self.table.itemSelectionChanged.connect(self.update_widget_highlights)
 
     # =========================================================================
     # LOGIC (Ported)
@@ -180,14 +480,8 @@ class ProjectConfigView(QWidget):
             self.table.setItem(row, 0, sn)
 
             # Enable Checkbox (Centered)
-            chk = QCheckBox()
-            chk.setChecked(tc.get("enabled", True))
-            
-            chk_widget = QWidget()
-            chk_layout = QHBoxLayout(chk_widget)
-            chk_layout.addWidget(chk)
-            chk_layout.setAlignment(Qt.AlignCenter)
-            chk_layout.setContentsMargins(0,0,0,0)
+            chk_widget = DraggableCheckboxContainer(self.table)
+            chk_widget.setChecked(tc.get("enabled", True))
             self.table.setCellWidget(row, 1, chk_widget)
 
             # Desc
@@ -200,15 +494,20 @@ class ProjectConfigView(QWidget):
             self._set_combo(row, 6, NEUTRAL_OPTIONS, tc.get("n", "NC"))
 
             # Expected
-            self.table.setItem(row, 7, QTableWidgetItem(tc.get("v", "")))
-            self.table.setItem(row, 8, QTableWidgetItem(tc.get("i", "")))
+            item_v = QTableWidgetItem(tc.get("v", ""))
+            item_v.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 7, item_v)
+
+            item_i = QTableWidgetItem(tc.get("i", ""))
+            item_i.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row, 8, item_i)
 
             self.table.setRowHeight(row, 32)
 
         self._renumber_serials()
 
     def _set_combo(self, row, col, values, current):
-        combo = NoWheelComboBox()
+        combo = DraggableComboBox(self.table)
         combo.addItems(values)
         combo.setCurrentText(current)
         combo.currentTextChanged.connect(self.on_combo_changed)
@@ -218,7 +517,7 @@ class ProjectConfigView(QWidget):
         combo.setStyleSheet("""
             QComboBox {
                 border: none;
-                padding-left: 2px;
+                padding-left: 10px;
             }
             QComboBox::drop-down {
                 border: none;
@@ -357,6 +656,55 @@ class ProjectConfigView(QWidget):
             self.refresh_projects()
             self.txt_project.clear()
             self.populate_test_table(default_test_cases)
+
+    def update_widget_highlights(self):
+        """Updates the background/text color of cell widgets based on row selection."""
+        rows = self.table.rowCount()
+
+        # Row selection color (Soft Blue-Grey)
+        SELECTION_BG = "#0078D7"
+        SELECTION_TXT = "#1a1a1a"
+
+        for r in range(rows):
+            # Check if row is selected by checking the first item
+            item = self.table.item(r, 0)
+            is_sel = item.isSelected() if item else False
+
+            bg = SELECTION_BG if is_sel else "transparent"
+            color = SELECTION_TXT if is_sel else "black"
+            font_weight = "bold" if is_sel else "normal"
+
+            # Helper to style widgets
+            def apply_style(widget, is_combo=False):
+                if not widget: return
+                if is_combo:
+                    # Preserve specific styling for combos (hide arrow, etc)
+                    widget.setStyleSheet(f"""
+                        QComboBox {{
+                            border: none;
+                            padding-left: 10px;
+                            background-color: {bg};
+                            color: {color};
+                            font-weight: {font_weight};
+                        }}
+                        QComboBox::drop-down {{
+                            border: none;
+                            width: 0px;
+                        }}
+                        QComboBox QAbstractItemView {{
+                            color: black;
+                            background-color: white;
+                            selection-background-color: {SELECTION_BG};
+                            selection-color: {SELECTION_TXT};
+                        }}
+                    """)
+                # NOTE: We DO NOT style the checkbox here anymore.
+                # It is handled globally by self.table.setStyleSheet() in load_ui()
+
+            apply_style(self.table.cellWidget(r, 3), is_combo=True)
+            apply_style(self.table.cellWidget(r, 4), is_combo=True)
+            apply_style(self.table.cellWidget(r, 5), is_combo=True)
+            apply_style(self.table.cellWidget(r, 6), is_combo=True)
 
     def on_row_selected(self):
         row = self.table.currentRow()

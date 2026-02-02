@@ -1,10 +1,11 @@
 import os
 import mysql.connector
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog, QAbstractItemView, QHeaderView
+    QWidget, QVBoxLayout, QMessageBox, QTableWidgetItem, QFileDialog, QAbstractItemView, QHeaderView,
+    QMenu, QInputDialog
 )
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, QDateTime, QTime, QDate
+from PySide6.QtCore import QFile, QIODevice, QDateTime, QTime, QDate, Qt
 
 from config import DB_CONFIG
 from logs import logger
@@ -15,6 +16,7 @@ class ResultsView(QWidget):
     def __init__(self):
         super().__init__()
         logger.info("Initializing New ResultsView")
+        self.active_filters = {}
         self.load_ui()
         self.setup_icons()
         self.connect_signals()
@@ -58,13 +60,28 @@ class ResultsView(QWidget):
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)  # Description column
-        header.setSectionResizeMode(12, QHeaderView.Stretch) # Result column
+        header.setSectionResizeMode(4, QHeaderView.Stretch)  # Description column (index 4)
+        header.setSectionResizeMode(13, QHeaderView.Stretch) # Result column (index 13)
         header.setMinimumSectionSize(50)
 
         # Row Height / Word Wrap
         self.table.setWordWrap(True)
+        self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.table.setSortingEnabled(True)
+
+        # Row highlighting style and cell padding
+        self.table.setStyleSheet("""
+            QTableWidget::item {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            QTableWidget::item:selected {
+                background-color: #0078d7;
+                color: white;
+                font-weight: bold;
+            }
+        """)
 
         # Default Dates
         today = QDate.currentDate()
@@ -81,6 +98,66 @@ class ResultsView(QWidget):
         self.btn_fetch_date.clicked.connect(self.fetch_by_date)
         self.btn_export.clicked.connect(self.export_results)
 
+        # Header Context Menu
+        self.table.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.horizontalHeader().customContextMenuRequested.connect(self.show_header_menu)
+
+        # Checkbox Interlock
+        self.chk_pdf.clicked.connect(self.on_pdf_clicked)
+        self.chk_excel.clicked.connect(self.on_excel_clicked)
+
+    def on_pdf_clicked(self):
+        if self.chk_pdf.isChecked():
+            self.chk_excel.setChecked(False)
+
+    def on_excel_clicked(self):
+        if self.chk_excel.isChecked():
+            self.chk_pdf.setChecked(False)
+
+    def show_header_menu(self, pos):
+        header = self.table.horizontalHeader()
+        logical_index = header.logicalIndexAt(pos)
+
+        menu = QMenu(self)
+        menu.setStyleSheet("QMenu { color: white; }")
+
+        col_name = header.model().headerData(logical_index, Qt.Horizontal)
+        filter_action = menu.addAction(f"Filter by '{col_name}'")
+        clear_action = menu.addAction("Clear All Filters")
+
+        action = menu.exec(header.mapToGlobal(pos))
+
+        if action == filter_action:
+            self.filter_column(logical_index)
+        elif action == clear_action:
+            self.clear_filters()
+
+    def filter_column(self, col_index):
+        header_text = self.table.model().headerData(col_index, Qt.Horizontal)
+        text, ok = QInputDialog.getText(self, "Filter", f"Show rows where {header_text} contains:")
+        if ok:
+            if text:
+                self.active_filters[col_index] = text.lower()
+            else:
+                if col_index in self.active_filters:
+                    del self.active_filters[col_index]
+            self.apply_filters()
+
+    def clear_filters(self):
+        self.active_filters.clear()
+        for row in range(self.table.rowCount()):
+            self.table.setRowHidden(row, False)
+
+    def apply_filters(self):
+        for row in range(self.table.rowCount()):
+            should_show = True
+            for col, text in self.active_filters.items():
+                item = self.table.item(row, col)
+                if not item or text not in item.text().lower():
+                    should_show = False
+                    break
+            self.table.setRowHidden(row, not should_show)
+
     # =========================================================================
     # LOGIC (Ported)
     # =========================================================================
@@ -95,11 +172,11 @@ class ResultsView(QWidget):
             return
 
         query = """
-            SELECT project_name, pcb_serial, sn, description,
+            SELECT sn, tested_at, project_name, pcb_serial, description,
                    r, y, b, n,
                    expected_v, expected_i,
                    measured_v, measured_i,
-                   result, tested_at
+                   result
             FROM test_results
             WHERE pcb_serial = %s
             ORDER BY tested_at DESC
@@ -111,11 +188,11 @@ class ResultsView(QWidget):
         to_dt   = self.dt_to.dateTime().toPython()
 
         query = """
-            SELECT project_name, pcb_serial, sn, description,
+            SELECT sn, tested_at, project_name, pcb_serial, description,
                    r, y, b, n,
                    expected_v, expected_i,
                    measured_v, measured_i,
-                   result, tested_at
+                   result
             FROM test_results
             WHERE tested_at BETWEEN %s AND %s
             ORDER BY tested_at DESC
@@ -143,11 +220,34 @@ class ResultsView(QWidget):
             QMessageBox.critical(self, "Database Error", str(e))
 
     def populate_table(self, rows):
+        self.active_filters.clear()
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
         for r, row in enumerate(rows):
             self.table.insertRow(r)
             for c, value in enumerate(row):
-                self.table.setItem(r, c, QTableWidgetItem(str(value)))
+                item = QTableWidgetItem()
+
+                # Check for numeric types for sorting
+                if isinstance(value, (int, float)):
+                    item.setData(Qt.EditRole, value)
+                    item.setText(str(value))
+                elif hasattr(value, 'timestamp'): # Handle datetime objects
+                    item.setData(Qt.EditRole, value.timestamp())
+                    item.setText(str(value))
+                else:
+                    item.setText(str(value))
+
+                # Alignment
+                if c == 4: # Description
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                elif c == 13: # Result
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                else:
+                    item.setTextAlignment(Qt.AlignCenter)
+
+                self.table.setItem(r, c, item)
+        self.table.setSortingEnabled(True)
 
     def export_results(self):
         if self.table.rowCount() == 0:

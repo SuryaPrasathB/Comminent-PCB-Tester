@@ -165,8 +165,8 @@ class TestRunner(QThread):
                 for tap in VOLTAGE_TAPPINGS:
                     tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"B_{tap.replace('V', '')}"], False)
 
-                # ---- Neutral ON - Neutral (NC = OFF, C = ON) ----
-                self.modbus.write_coil(plc_slave, coils["NEUTRAL"], True)
+                # ---- Neutral OFF - Neutral (NC = OFF, C = ON) ----
+                self.modbus.write_coil(plc_slave, coils["NEUTRAL"], False)
 
                 # OFF all current relays
                 for cur in CURRENT_TAPPINGS:
@@ -181,17 +181,20 @@ class TestRunner(QThread):
                 present_slave_name = imp.get("display_name")
                 error_msg = "Impedance Measurement" # If error happens
 
+                # ---- Neutral ON - Neutral (NC = OFF, C = ON) ----
+                self.modbus.write_coil(plc_slave, coils["IMP1_N"], True)
+
                 for phase, coil_key, reg_key in [
-                    ("R", "IMP_R", "R_N_IMP"),
-                    ("Y", "IMP_Y", "Y_N_IMP"),
-                    ("B", "IMP_B", "B_N_IMP"),
+                    ("R", "IMP1_R", "R_N_IMP"),
+                    ("Y", "IMP1_Y", "Y_N_IMP"),
+                    ("B", "IMP1_B", "B_N_IMP"),
                 ]:
                     print(f"[TEST] Switching {phase}-N")
                     logger.info(f"Switching {phase}-N")
 
-                    self.modbus.write_coil(plc_slave, coils["IMP_R"], False)
-                    self.modbus.write_coil(plc_slave, coils["IMP_Y"], False)
-                    self.modbus.write_coil(plc_slave, coils["IMP_B"], False)
+                    self.modbus.write_coil(plc_slave, coils["IMP1_R"], False)
+                    self.modbus.write_coil(plc_slave, coils["IMP1_Y"], False)
+                    self.modbus.write_coil(plc_slave, coils["IMP1_B"], False)
 
                     self.modbus.write_coil(plc_slave, coils[coil_key], True)
                     time.sleep(STABILIZATION_TIME) #(0.2)
@@ -204,6 +207,14 @@ class TestRunner(QThread):
                         imp["registers"][reg_key],
                         endian=endian
                     )
+
+                    # ---- Impedance Meter Phase Relays----
+                    self.modbus.write_coil(plc_slave, coils["IMP1_R"], False)
+                    self.modbus.write_coil(plc_slave, coils["IMP1_Y"], False)
+                    self.modbus.write_coil(plc_slave, coils["IMP1_B"], False)
+
+                    # ---- Impedance Meter Neutral Relay----
+                    self.modbus.write_coil(plc_slave, coils["IMP1_N"], False)
 
                     impedance_results[phase] = value
 
