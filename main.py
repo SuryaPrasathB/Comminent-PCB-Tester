@@ -1,12 +1,12 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from new_ui.login_window import LoginWindow
-from new_ui.main_window import MainWindow
-from new_ui.settings_manager import SettingsManager
-from new_ui.theme import AppTheme
-from db_utils import create_tables
+from src.ui.login_window import LoginWindow
+from src.ui.main_window import MainWindow
+from src.ui.settings_manager import SettingsManager
+from src.ui.theme import AppTheme
+from src.core.db_utils import create_tables
 
-from logs import logger
+from src.core.logger import logger
 
 
 if __name__ == "__main__":
