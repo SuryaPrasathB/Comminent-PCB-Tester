@@ -24,7 +24,7 @@ SERIAL_SETTINGS = {
 logger.info("SERIAL_SETTINGS loaded")
 
 NEUTRAL_OPTIONS = ["NC", "C"]
-VOLTAGE_TAPPINGS = ["NC", "144V", "240V", "265V", "500V", "510V", "520V", "530V"]
+VOLTAGE_TAPPINGS = ["NC", "138V", "144V", "240V", "265V", "500V", "510V", "520V", "530V"]
 CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
 
 '''
@@ -116,38 +116,58 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
         f"Current taps={current_tappings}, "
         f"Start addr={start_addr}"
     )
+
     coils = {}
     addr = start_addr
 
-    # ---- Neutral relay (only C needs relay) ----
+    # =======================================================
+    # NEUTRAL (common)
     coils["NEUTRAL"] = addr
     addr += 1
 
-    # ---- Voltage selection coils (skip NC) ----
+    # =======================================================
+    # Voltage selection coils (COMMON for both PCBs)
     for phase in ("R", "Y", "B"):
         for tap in voltage_tappings:
             if tap == "NC":
-                continue  # ❌ no relay for NC
+                continue
             tap_key = tap.replace("V", "")
             coils[f"{phase}_{tap_key}"] = addr
             addr += 1
 
-    # ---- Current selection coils (skip 0) ----
-    for cur in current_tappings:
-        if cur == "0A":
-            continue  # ❌ no relay for 0
-        cur_key = cur.replace("A", "").replace(".", "_")
-        coils[f"CUR_{cur_key}"] = addr
+    # =======================================================
+    # Current selection – PCB 1 & PCB 2
+    for pcb in (1, 2):
+        for cur in current_tappings:
+            if cur == "0A":
+                continue
+            cur_key = cur.replace("A", "").replace(".", "_")
+            coils[f"CUR{pcb}_{cur_key}"] = addr
+            addr += 1
+
+    # =======================================================
+    # Impedance test – PCB 1
+    for phase in ("R", "Y", "B", "N"):
+        coils[f"IMP1_{phase}"] = addr
         addr += 1
 
-    # ---- Impedance test coils ----
-    for phase in ("R", "Y", "B"):
-        coils[f"IMP_{phase}"] = addr
+    # =======================================================
+    # Impedance test – PCB 2
+    for phase in ("R", "Y", "B", "N"):
+        coils[f"IMP2_{phase}"] = addr
         addr += 1
+
+    print("\n--- PLC COIL MAP (SUMMARY) ---")
+    for name, address in coils.items():
+        print(f"{address:04d} : {name}")
+
+    print("\n//=======================================================\n")
+    print(f"Total coils generated: {len(coils)}")
 
     logger.info(f"PLC coils generated | Total coils={len(coils)}")
-
     return coils
+
+
 
 
 # =====================================================
@@ -161,7 +181,7 @@ SLAVE_DEVICES = {
     },
 
     "QR_SCANNER_2": {
-        "read_cmd": "015404",  # in Hex
+        "read_cmd": "025404",  # in Hex
         "display_name": "QR_Code_Scanner_2"
     },
 
@@ -191,7 +211,7 @@ SLAVE_DEVICES = {
     },
 
     "IMP_METER_1": {
-        "slave_id": 3,
+        "slave_id": 4,
         "endian": "ABCD",
         "registers": {
             "R_N_IMP": 0x0000,
@@ -207,7 +227,7 @@ SLAVE_DEVICES = {
     },
 
     "IMP_METER_2": {
-        "slave_id": 4,
+        "slave_id": 3,
         "endian": "ABCD",
         "registers": {
             "R_N_IMP": 0x0000,
@@ -223,7 +243,7 @@ SLAVE_DEVICES = {
     },
 
     "DC_V_METER_1": {
-        "slave_id": 17,
+        "slave_id": 18,
         "endian": "ABCD",
         "registers": {
             "DC_VOLTAGE": 0x0BB7,
@@ -259,7 +279,7 @@ SLAVE_DEVICES = {
     },
 
     "DC_I_METER_2": {
-        "slave_id": 18,
+        "slave_id": 17,
         "endian": "ABCD",
         "registers": {
             "DC_CURRENT": 0x0BB9,

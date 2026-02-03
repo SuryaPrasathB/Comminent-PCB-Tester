@@ -198,7 +198,6 @@ class DebugView(QWidget):
 
     # =========================================================================
 
-
     def _get_modbus(self):
         com = self.cmb_com.currentText()
         if com.startswith("--"):
@@ -214,54 +213,102 @@ class DebugView(QWidget):
     # -------------------------------------------------
     def apply_all_taps(self):
         try:
+            print("=== apply_all_taps(): START ===")
+
             mb = self._get_modbus()
+            print("Modbus connection obtained")
+
             plc = SLAVE_DEVICES["PLC"]
             c = plc["coils"]
             s = plc["slave_id"]
 
+            print(f"Using slave_id: {s}")
+
             # Helper to write
-            def w(coil, state):
+            def write(coil, state):
+                print(f"  → Writing coil {coil} = {state}")
                 mb.write_coil(s, coil, state)
 
             # Neutral
-            w(c["NEUTRAL"], self.cmb_n.currentText() == "C")
+            neutral_state = self.cmb_n.currentText() == "C"
+            print(f"Neutral selection: {self.cmb_n.currentText()} -> {neutral_state}")
+            write(c["NEUTRAL"], neutral_state)
 
-            # Voltage
-            rv, yv, bv = self.cmb_r.currentText(), self.cmb_y.currentText(), self.cmb_b.currentText()
+            # Voltage selections
+            rv = self.cmb_r.currentText()
+            yv = self.cmb_y.currentText()
+            bv = self.cmb_b.currentText()
 
+            print(f"Voltage selections: R={rv}, Y={yv}, B={bv}")
+
+            # R phase voltage
+            print("Resetting R-phase voltage taps")
             for t in VOLTAGE_TAPPINGS:
-                if t != "NC": w(c[f"R_{t.replace('V','')}"], False)
-            if rv != "NC": w(c[f"R_{rv.replace('V','')}"], True)
+                if t != "NC":
+                    write(c[f"R_{t.replace('V', '')}"], False)
 
+            if rv != "NC":
+                print(f"Setting R-phase voltage tap: {rv}")
+                write(c[f"R_{rv.replace('V', '')}"], True)
+
+            # Y phase voltage
+            print("Resetting Y-phase voltage taps")
             for t in VOLTAGE_TAPPINGS:
-                if t != "NC": w(c[f"Y_{t.replace('V','')}"], False)
-            if yv != "NC": w(c[f"Y_{yv.replace('V','')}"], True)
+                if t != "NC":
+                    write(c[f"Y_{t.replace('V', '')}"], False)
 
+            if yv != "NC":
+                print(f"Setting Y-phase voltage tap: {yv}")
+                write(c[f"Y_{yv.replace('V', '')}"], True)
+
+            # B phase voltage
+            print("Resetting B-phase voltage taps")
             for t in VOLTAGE_TAPPINGS:
-                if t != "NC": w(c[f"B_{t.replace('V','')}"], False)
-            if bv != "NC": w(c[f"B_{bv.replace('V','')}"], True)
+                if t != "NC":
+                    write(c[f"B_{t.replace('V', '')}"], False)
 
-            # 🔹 CHANGED: Current 1 & 2
+            if bv != "NC":
+                print(f"Setting B-phase voltage tap: {bv}")
+                write(c[f"B_{bv.replace('V', '')}"], True)
+
+            # 🔹 Current 1 & 2
+            print("Resetting all current taps (CUR1 & CUR2)")
             for i in CURRENT_TAPPINGS:
-                if i != "0":
-                    w(c[f"CUR1_{i.replace('.','_')}"], False)
-                    w(c[f"CUR2_{i.replace('.','_')}"], False)
+                if i != "0A":
+                    cur_key = i.replace("A", "").replace(".", "_")
+                    write(c[f"CUR1_{cur_key}"], False)
+                    write(c[f"CUR2_{cur_key}"], False)
 
-            if self.cmb_i1.currentText() != "0":
-                w(c[f"CUR1_{self.cmb_i1.currentText().replace('.','_')}"], True)
+            i1 = self.cmb_i1.currentText()
+            i2 = self.cmb_i2.currentText()
 
-            if self.cmb_i2.currentText() != "0":
-                w(c[f"CUR2_{self.cmb_i2.currentText().replace('.','_')}"], True)
+            print(f"Current selections: I1={i1}, I2={i2}")
 
+            if i1 != "0A":
+                cur_key = i1.replace("A", "").replace(".", "_")
+                print(f"Setting CUR1 tap: {i1}")
+                write(c[f"CUR1_{cur_key}"], True)
+
+            if i2 != "0A":
+                cur_key = i2.replace("A", "").replace(".", "_")
+                print(f"Setting CUR2 tap: {i2}")
+                write(c[f"CUR2_{cur_key}"], True)
+
+            print("=== apply_all_taps(): SUCCESS ===")
             logger.info("Taps applied")
 
         except Exception as e:
+            print(f"❌ apply_all_taps(): ERROR -> {e}")
             logger.error(f"Apply failed: {e}")
             QMessageBox.warning(self, "Error", str(e))
+
         finally:
+            print("Closing Modbus connection")
             self._close_modbus()
+            print("=== apply_all_taps(): END ===")
 
     # -------------------------------------------------
+
     def reset_all_relays(self):
         try:
             mb = self._get_modbus()
