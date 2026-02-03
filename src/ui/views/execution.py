@@ -66,6 +66,7 @@ class ExecutionView(QWidget):
         self.btn_start = self.findChild(QWidget, "pushButton_start")
         self.btn_stop = self.findChild(QWidget, "pushButton_stop")
         self.btn_reset = self.findChild(QWidget, "pushButton_reset")
+        self.btn_run_selected = self.findChild(QWidget, "pushButton_runSelected")
         # runOne removed from UI
 
         # Configure Both Tables
@@ -109,6 +110,7 @@ class ExecutionView(QWidget):
         IconHelper.apply_icon(self.btn_start, "start", "white")
         IconHelper.apply_icon(self.btn_stop, "stop", "white")
         IconHelper.apply_icon(self.btn_reset, "refresh")
+        IconHelper.apply_icon(self.btn_run_selected, "execution")
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:
@@ -123,6 +125,7 @@ class ExecutionView(QWidget):
         self.btn_start.clicked.connect(self.start_tests)
         self.btn_stop.clicked.connect(self.stop_tests)
         self.btn_reset.clicked.connect(self.reset_table)
+        self.btn_run_selected.clicked.connect(self.run_selected_test)
 
     # =========================================================================
     # LOGIC
@@ -228,6 +231,53 @@ class ExecutionView(QWidget):
             com_port=com_port,
             start_index=start_row,
             run_single=False
+        )
+
+        self.runner.running_sn_signal.connect(self.highlight_running_row)
+        self.runner.result_signal.connect(self.update_ui_row)
+        self.runner.finished_signal.connect(self.on_tests_finished)
+        self.runner.error_signal.connect(self.on_test_error)
+        self.runner.start()
+
+    def run_selected_test(self):
+        project_name = self.cmb_projects.currentText()
+        com_port = self.cmb_comPort.currentText()
+
+        if project_name.startswith("--"):
+            QMessageBox.warning(self, "Error", "Select project")
+            return
+        if com_port.startswith("--"):
+            QMessageBox.warning(self, "Error", "Select COM port")
+            return
+
+        sn1 = self.txt_pcb_serial_1.text().strip()
+        sn2 = self.txt_pcb_serial_2.text().strip()
+        if not sn1 and not sn2:
+             QMessageBox.warning(self, "Error", "Enter at least one PCB Serial Number")
+             return
+        pcb_serial_combined = f"{sn1},{sn2}" if sn2 else sn1
+
+        test_cases = load_test_cases(project_name)
+
+        # Get selected row
+        selected_row = self.table_results_1.currentRow()
+        if selected_row < 0:
+            QMessageBox.warning(self, "Warning", "Please select a row to run.")
+            return
+
+        # Clear just this row in both tables
+        for table in [self.table_results_1, self.table_results_2]:
+            if not table: continue
+            for col in range(7, 13):
+                table.setItem(selected_row, col, QTableWidgetItem(""))
+
+        self.runner = TestRunner(
+            project_name=project_name,
+            pcb_serial=pcb_serial_combined,
+            test_cases=test_cases,
+            com_port=com_port,
+            start_index=selected_row,
+            run_single=True
         )
 
         self.runner.running_sn_signal.connect(self.highlight_running_row)
