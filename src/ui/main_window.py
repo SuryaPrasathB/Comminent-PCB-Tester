@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
             if hasattr(self, 'label_logo_icon'):
                 pixmap = QPixmap(icon_path)
                 self.label_logo_icon.setPixmap(pixmap)
-
+    # -------------------------------------------------
     def load_ui(self):
         loader = QUiLoader()
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -129,6 +129,7 @@ class MainWindow(QMainWindow):
         if self.role.lower() != "admin":
             if self.btn_settings: self.btn_settings.setVisible(False)
             if self.btn_debug: self.btn_debug.setVisible(False)
+    # -------------------------------------------------
 
     def setup_icons(self):
         # Apply icons using helper
@@ -139,6 +140,7 @@ class MainWindow(QMainWindow):
         IconHelper.apply_icon(self.btn_logs, "logs", "white")
         IconHelper.apply_icon(self.btn_settings, "settings", "white")
         IconHelper.apply_icon(self.btn_logout, "logout", "white")
+    # -------------------------------------------------
 
     def setup_navigation(self):
         self.btn_exec.clicked.connect(lambda: self.navigate("execution"))
@@ -159,10 +161,12 @@ class MainWindow(QMainWindow):
 
         # Load Default
         self.navigate("execution")
+    # -------------------------------------------------
 
     def on_logout(self):
         self.wants_relogin = True
         self.close()
+    # -------------------------------------------------
 
     def _get_or_create_view(self, page_name):
         if page_name in self.views:
@@ -187,6 +191,7 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(view)
             return view
         return None
+    # -------------------------------------------------
 
     def navigate(self, page_name):
         logger.info(f"Navigating to {page_name}")
@@ -222,6 +227,7 @@ class MainWindow(QMainWindow):
 
         if page_name in btn_map and btn_map[page_name]:
             btn_map[page_name].setChecked(True)
+    # -------------------------------------------------
 
     def toggle_sidebar(self):
         width = self.widget_sidebar.width()
@@ -264,3 +270,12 @@ class MainWindow(QMainWindow):
                 original = btn.property("original_text")
                 if original is not None:
                     btn.setText(original)
+    # -------------------------------------------------
+    def on_tab_changed(self, index):
+        current_widget = self.tab_widget.widget(index)
+
+        # ✅ Only when user SWITCHES to Execution tab
+        if current_widget == self.tab_execution:
+            print("[MAIN] Execution tab activated (real switch)")
+            logger.info("Execution tab activated")
+            self.execution_controller.load_selected_project()

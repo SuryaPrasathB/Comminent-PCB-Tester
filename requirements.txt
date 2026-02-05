@@ -6,3 +6,5 @@ pyserial
 openpyxl
 PySide6
 pymodbus
+reportlab
+pandas

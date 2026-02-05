@@ -31,7 +31,7 @@ class ExecutionView(QWidget):
         # Initial Setup
         self._load_com_ports()
         self.refresh_projects()
-
+    # =========================================================================
     def load_ui(self):
         loader = QUiLoader()
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -66,7 +66,10 @@ class ExecutionView(QWidget):
         self.btn_start = self.findChild(QWidget, "pushButton_start")
         self.btn_stop = self.findChild(QWidget, "pushButton_stop")
         self.btn_reset = self.findChild(QWidget, "pushButton_reset")
-        self.btn_run_selected = self.findChild(QWidget, "pushButton_runSelected")
+        #self.btn_run_selected = self.findChild(QWidget, "pushButton_runSelected")
+        self.btn_run_selected_1 = self.findChild(QWidget, "pushButton_runSelected_1")
+        self.btn_run_selected_2 = self.findChild(QWidget, "pushButton_runSelected_2")
+
         # runOne removed from UI
 
         # Configure Both Tables
@@ -76,7 +79,7 @@ class ExecutionView(QWidget):
         # Event Filters for refreshing on click
         self.cmb_comPort.installEventFilter(self)
         self.cmb_projects.installEventFilter(self)
-
+    # =========================================================================
     def configure_table(self, table):
         if not table: return
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -105,13 +108,15 @@ class ExecutionView(QWidget):
                 font-weight: bold;
             }
         """)
-
+    # =========================================================================
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_start, "start", "white")
         IconHelper.apply_icon(self.btn_stop, "stop", "white")
         IconHelper.apply_icon(self.btn_reset, "refresh")
-        IconHelper.apply_icon(self.btn_run_selected, "execution")
-
+        #IconHelper.apply_icon(self.btn_run_selected, "execution")
+        IconHelper.apply_icon(self.btn_run_selected_1, "execution")
+        IconHelper.apply_icon(self.btn_run_selected_2, "execution")
+    # =========================================================================
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:
             if obj == self.cmb_comPort:
@@ -119,13 +124,17 @@ class ExecutionView(QWidget):
             elif obj == self.cmb_projects:
                 self.refresh_projects()
         return super().eventFilter(obj, event)
-
+    # =========================================================================
     def connect_signals(self):
         self.cmb_projects.currentIndexChanged.connect(self.load_selected_project)
         self.btn_start.clicked.connect(self.start_tests)
         self.btn_stop.clicked.connect(self.stop_tests)
         self.btn_reset.clicked.connect(self.reset_table)
-        self.btn_run_selected.clicked.connect(self.run_selected_test)
+        #self.btn_run_selected.clicked.connect(self.run_selected_test)
+        self.btn_run_selected_1.clicked.connect(
+            lambda: self.run_selected_test(self.table_results_1))
+        self.btn_run_selected_2.clicked.connect(
+            lambda: self.run_selected_test(self.table_results_2))
 
     # =========================================================================
     # LOGIC
@@ -141,6 +150,7 @@ class ExecutionView(QWidget):
             self.cmb_comPort.addItem(p.device)
 
         self.cmb_comPort.blockSignals(False)
+    # =========================================================================
 
     def refresh_projects(self):
         logger.info("Refreshing projects")
@@ -155,6 +165,7 @@ class ExecutionView(QWidget):
 
         self.cmb_projects.setCurrentText(current)
         self.cmb_projects.blockSignals(False)
+    # =========================================================================
 
     def load_selected_project(self):
         project_name = self.cmb_projects.currentText()
@@ -165,6 +176,7 @@ class ExecutionView(QWidget):
         test_cases = load_test_cases(project_name)
         self.populate_results_table(test_cases)
         self._loaded_project = project_name
+    # =========================================================================
 
     def populate_results_table(self, test_cases):
         # Populate both tables
@@ -188,10 +200,10 @@ class ExecutionView(QWidget):
                     if col < 12:
                         item.setTextAlignment(Qt.AlignCenter)
                     table.setItem(row, col, item)
-
+    # -------------------------------------------------
     def start_tests(self):
         project_name = self.cmb_projects.currentText()
-        com_port = self.cmb_comPort.currentText()
+        com_port     = self.cmb_comPort.currentText()
 
         if project_name.startswith("--"):
             QMessageBox.warning(self, "Error", "Select project")
@@ -199,20 +211,37 @@ class ExecutionView(QWidget):
         if com_port.startswith("--"):
             QMessageBox.warning(self, "Error", "Select COM port")
             return
+        # =====================================================
+        # AUTO READ BOTH PCB SERIAL NUMBERS
+        # =====================================================
+        sn1 = self._read_qr("QR_SCANNER_1", com_port)
+        sn2 = self._read_qr("QR_SCANNER_2", com_port)
 
-        sn1 = self.txt_pcb_serial_1.text().strip()
-        sn2 = self.txt_pcb_serial_2.text().strip()
+        fail_msgs = []
 
-        # Allow running if at least one SN is provided, or just default to empty
-        if not sn1 and not sn2:
-             QMessageBox.warning(self, "Error", "Enter at least one PCB Serial Number")
-             return
+        if not sn1:
+            fail_msgs.append("PCB-1 QR Scanner failed")
 
-        # Combine SNs for the runner (e.g. "SN1,SN2") or just pass primary
-        # For now, we treat SN1 as primary for DB, but the UI shows both.
-        # Ideally, we pass both to the runner.
-        pcb_serial_combined = f"{sn1},{sn2}" if sn2 else sn1
+        if not sn2:
+            fail_msgs.append("PCB-2 QR Scanner failed")
 
+        if fail_msgs:
+            QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs))
+            return
+
+        # Update UI
+        if sn1:
+            self.txt_pcb_serial_1.setText(sn1)
+        else:
+            self.txt_pcb_serial_1.setText("NO_READ")
+
+        if sn2:
+            self.txt_pcb_serial_2.setText(sn2)
+        else:
+            self.txt_pcb_serial_2.setText("NO_READ")
+
+        pcb_serial_tuple = (sn1, sn2)
+        # =====================================================
         test_cases = load_test_cases(project_name)
 
         start_row = self.table_results_1.currentRow()
@@ -226,10 +255,11 @@ class ExecutionView(QWidget):
 
         self.runner = TestRunner(
             project_name=project_name,
-            pcb_serial=pcb_serial_combined,
+            pcb_serial=pcb_serial_tuple,
             test_cases=test_cases,
             com_port=com_port,
             start_index=start_row,
+            active_pcbs=(1, 2),  # 👈 BOTH DUTs
             run_single=False
         )
 
@@ -239,56 +269,88 @@ class ExecutionView(QWidget):
         self.runner.error_signal.connect(self.on_test_error)
         self.runner.start()
 
-    def run_selected_test(self):
+    # -------------------------------------------------
+    def run_selected_test(self, table):
         project_name = self.cmb_projects.currentText()
         com_port = self.cmb_comPort.currentText()
 
         if project_name.startswith("--"):
             QMessageBox.warning(self, "Error", "Select project")
             return
+
         if com_port.startswith("--"):
             QMessageBox.warning(self, "Error", "Select COM port")
             return
 
-        sn1 = self.txt_pcb_serial_1.text().strip()
-        sn2 = self.txt_pcb_serial_2.text().strip()
-        if not sn1 and not sn2:
-             QMessageBox.warning(self, "Error", "Enter at least one PCB Serial Number")
-             return
-        pcb_serial_combined = f"{sn1},{sn2}" if sn2 else sn1
+        pcb_serial = self.txt_pcb_serial_1.text().strip() or "SINGLE_RUN"
 
         test_cases = load_test_cases(project_name)
 
-        # Get selected row
-        selected_row = self.table_results_1.currentRow()
+        pcb_index = 1 if table is self.table_results_1 else 2
+
+        # Get selected row from the given table
+        selected_row = table.currentRow()
         if selected_row < 0:
             QMessageBox.warning(self, "Warning", "Please select a row to run.")
             return
 
-        # Clear just this row in both tables
-        for table in [self.table_results_1, self.table_results_2]:
-            if not table: continue
-            for col in range(7, 13):
-                table.setItem(selected_row, col, QTableWidgetItem(""))
+        # Clear only this row in this table
+        for col in range(7, 13):
+            table.setItem(selected_row, col, QTableWidgetItem(""))
 
+        # Create runner
         self.runner = TestRunner(
             project_name=project_name,
-            pcb_serial=pcb_serial_combined,
+            pcb_serial=pcb_serial,
             test_cases=test_cases,
             com_port=com_port,
             start_index=selected_row,
+            active_pcbs=(pcb_index,),
             run_single=True
         )
 
-        self.runner.running_sn_signal.connect(self.highlight_running_row)
+        # Connect signals (table-aware)
+        self.runner.running_sn_signal.connect(
+            lambda sn: self.highlight_running_row(sn, table)
+        )
         self.runner.result_signal.connect(self.update_ui_row)
+
         self.runner.finished_signal.connect(self.on_tests_finished)
         self.runner.error_signal.connect(self.on_test_error)
+
         self.runner.start()
+
+    # -------------------------------------------------
+    def _read_qr(self, device_key, com_port):
+        try:
+            qr = SLAVE_DEVICES[device_key]
+
+            print(f"[QR] Reading {qr['display_name']} → CMD {qr['read_cmd']}")
+
+            raw = RawSerial(port=com_port)
+            data = raw.write_read(qr["read_cmd"])
+            raw.close()
+
+            serial = data.decode(errors="ignore").strip()
+            serial ="QR_CODE"
+
+            print(f"[QR] {qr['display_name']} → {serial}")
+
+            if serial == "" or serial.upper() == "NG":
+                raise Exception("Invalid QR")
+
+            return serial
+
+        except Exception as e:
+            logger.error(f"{device_key} read failed: {e}")
+            return None
+
+    # -------------------------------------------------
 
     def stop_tests(self):
         if self.runner:
             self.runner.stop()
+    # -------------------------------------------------
 
     def reset_table(self):
         for table in [self.table_results_1, self.table_results_2]:
@@ -296,6 +358,7 @@ class ExecutionView(QWidget):
             for row in range(table.rowCount()):
                 for col in range(7, 13):
                     table.setItem(row, col, QTableWidgetItem(""))
+    # -------------------------------------------------
 
     def clear_results_from_row(self, start_row):
         for table in [self.table_results_1, self.table_results_2]:
@@ -304,16 +367,27 @@ class ExecutionView(QWidget):
                 for col in range(7, 13):
                     table.setItem(row, col, QTableWidgetItem(""))
 
-    def update_ui_row(self, data):
-        # Data Format: {sn, r_v, y_v, ... result}
-        # Ideally data should have 'pcb_index'
+    # -------------------------------------------------
+    def update_ui_row(self, data: dict) -> None:
+        if not isinstance(data, dict):
+            return
 
         sn = data.get("sn")
-        if not sn: return
+        pcb_index = data.get("pcb_index")
 
-        # Update ONLY table 1 to avoid deceptive mirroring.
-        # Once backend supports dual PCB, we can update table 2 based on pcb_index.
-        self._update_single_table(self.table_results_1, sn, data)
+        if sn is None or pcb_index is None:
+            logger.warning("update_ui_row: missing sn or pcb_index")
+            return
+
+        table = (
+            self.table_results_1
+            if pcb_index == 1
+            else self.table_results_2
+        )
+
+        self._update_single_table(table, sn, data)
+
+    # -------------------------------------------------
 
     def _update_single_table(self, table, sn, data):
         if not table: return
@@ -335,17 +409,32 @@ class ExecutionView(QWidget):
 
             table.setItem(row, 12, res_item)
 
-    def highlight_running_row(self, sn):
+    # -------------------------------------------------
+    def highlight_running_row(self, sn, table=None):
         row = sn - 1
-        # Sync Scroll Both (optional, but harmless to scroll empty table)
-        for table in [self.table_results_1, self.table_results_2]:
-            if not table: continue
-            if 0 <= row < table.rowCount():
-                table.setCurrentCell(row, 0)
-                table.scrollToItem(table.item(row, 0), QAbstractItemView.PositionAtCenter)
 
+        tables = [table] if table else [self.table_results_1, self.table_results_2]
+
+        for t in tables:
+            if 0 <= row < t.rowCount():
+                t.setCurrentCell(row, 0)
+                t.scrollToItem(t.item(row, 0), QAbstractItemView.PositionAtCenter)
+
+    # -------------------------------------------------
     def on_tests_finished(self, status):
-        QMessageBox.information(self, "Done", f"Tests finished: {status}")
+        if status == "success":
+            print("[EXEC] All tests completed.")
+            logger.info("All tests completed")
+            QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.")
+        elif status == "error":
+            print("[EXEC] on_tests_finished : error")
+            logger.info("[EXEC] on_tests_finished : error")
+            QMessageBox.information(self.ui, "Test Failed", "Error")
+        elif status == "stop_requested":
+            print("[EXEC] on_tests_finished : stopped")
+            logger.info("[EXEC] on_tests_finished : stopped")
+            QMessageBox.information(self.ui, "Test Completed", "All tests have been stopped successfully.")
 
+    # -------------------------------------------------
     def on_test_error(self, msg):
         QMessageBox.critical(self, "Error", msg)

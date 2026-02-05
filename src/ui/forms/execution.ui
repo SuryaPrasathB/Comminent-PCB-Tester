@@ -280,19 +280,32 @@
        <property name="orientation"><enum>Qt::Horizontal</enum></property>
       </spacer>
      </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_runSelected">
-       <property name="text">
-        <string>Run Selected</string>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>130</width>
-         <height>40</height>
-        </size>
-       </property>
-      </widget>
-     </item>
+    <item>
+     <widget class="QPushButton" name="pushButton_runSelected_1">
+      <property name="text">
+       <string>Run Selected (PCB 1)</string>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>160</width>
+        <height>40</height>
+       </size>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pushButton_runSelected_2">
+      <property name="text">
+       <string>Run Selected (PCB 2)</string>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>160</width>
+        <height>40</height>
+       </size>
+      </property>
+     </widget>
+    </item>
      <item>
       <widget class="QPushButton" name="pushButton_reset">
        <property name="text">
@@ -308,7 +321,6 @@
      </item>
     </layout>
    </item>
-
   </layout>
  </widget>
  <resources/>

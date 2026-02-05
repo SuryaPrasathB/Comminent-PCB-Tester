@@ -6,7 +6,7 @@ from PySide6.QtCore import QFile, QIODevice, QEvent
 
 from src.core.drivers.modbus_driver import ModbusRTU
 from src.core.drivers.raw_serial_driver import RawSerial
-from src.core.config import SLAVE_DEVICES, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, NEUTRAL_OPTIONS
+from src.core.config import SLAVE_DEVICES, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, NEUTRAL_OPTIONS, VLL_TO_TAP
 from src.core.logger import logger
 from src.ui.icons import IconHelper
 
@@ -18,6 +18,21 @@ class DebugView(QWidget):
 
         self.modbus = None
         self.current_com = None
+        self.main_contactor_on = False
+        self.imp_test_pcb1_on = False
+        self.imp_test_pcb2_on = False
+        self.pcb2_enabled = False
+
+        self.imp_relays = {
+            "IMP1_R": False,
+            "IMP1_Y": False,
+            "IMP1_B": False,
+            "IMP1_N": False,
+            "IMP2_R": False,
+            "IMP2_Y": False,
+            "IMP2_B": False,
+            "IMP2_N": False,
+        }
 
         self.load_ui()
         self.setup_icons()
@@ -84,6 +99,11 @@ class DebugView(QWidget):
         self.cmb_i1 = self.findChild(QComboBox, "combo_current_1")
         self.cmb_i2 = self.findChild(QComboBox, "combo_current_2")
 
+        self.btn_main = self.findChild(QWidget, "btn_main_contactor")
+        self.btn_imp_test_pcb1 = self.findChild(QWidget, "btn_imp_test_pcb1")
+        self.btn_imp_test_pcb2 = self.findChild(QWidget, "btn_imp_test_pcb2")
+        self.btn_pcb2_enable = self.findChild(QWidget, "btn_pcb2_enable")
+
         self.btn_apply = self.findChild(QWidget, "btn_apply_taps")
         self.btn_reset = self.findChild(QWidget, "btn_reset_taps")
 
@@ -100,6 +120,13 @@ class DebugView(QWidget):
         self.txt_y_v = self.findChild(QWidget, "txt_y_v")
         self.btn_read_b_v = self.findChild(QWidget, "btn_read_b_v")
         self.txt_b_v = self.findChild(QWidget, "txt_b_v")
+
+        self.btn_read_vry = self.findChild(QWidget, "btn_read_vry")
+        self.txt_vry = self.findChild(QWidget, "txt_vry")
+        self.btn_read_vyb = self.findChild(QWidget, "btn_read_vyb")
+        self.txt_vyb = self.findChild(QWidget, "txt_vyb")
+        self.btn_read_vbr = self.findChild(QWidget, "btn_read_vbr")
+        self.txt_vbr = self.findChild(QWidget, "txt_vbr")
 
         # Impedance meters (2x)
         self.btn_read_rn_r_1 = self.findChild(QWidget, "btn_read_rn_r_1")
@@ -127,6 +154,18 @@ class DebugView(QWidget):
         self.txt_dc_i_1 = self.findChild(QWidget, "txt_dc_i_1")
         self.btn_read_dc_i_2 = self.findChild(QWidget, "btn_read_dc_i_2")
         self.txt_dc_i_2 = self.findChild(QWidget, "txt_dc_i_2")
+
+        # PCB1 Impedance Relays
+        self.btn_imp1_r = self.findChild(QWidget, "btn_imp1_r")
+        self.btn_imp1_y = self.findChild(QWidget, "btn_imp1_y")
+        self.btn_imp1_b = self.findChild(QWidget, "btn_imp1_b")
+        self.btn_imp1_n = self.findChild(QWidget, "btn_imp1_n")
+
+        # PCB2 Impedance Relays
+        self.btn_imp2_r = self.findChild(QWidget, "btn_imp2_r")
+        self.btn_imp2_y = self.findChild(QWidget, "btn_imp2_y")
+        self.btn_imp2_b = self.findChild(QWidget, "btn_imp2_b")
+        self.btn_imp2_n = self.findChild(QWidget, "btn_imp2_n")
 
         # Rescan COM on click
         self.cmb_com.installEventFilter(self)
@@ -168,15 +207,22 @@ class DebugView(QWidget):
         # ================== APPLY / RESET ==================
         self.btn_apply.clicked.connect(self.apply_all_taps)
         self.btn_reset.clicked.connect(self.reset_all_relays)
+        self.btn_main.clicked.connect(self.toggle_main_contactor)
+        self.btn_imp_test_pcb1.clicked.connect(self.toggle_impedance_pcb1)
+        self.btn_imp_test_pcb2.clicked.connect(self.toggle_impedance_pcb2)
+        self.btn_pcb2_enable.clicked.connect(self.toggle_pcb2_enable)
 
         # ================== QR SCANNERS (2) ==================
         self.btn_qr_1.clicked.connect(lambda: self.read_qr_code("QR_SCANNER_1", self.txt_qr_1))
         self.btn_qr_2.clicked.connect(lambda: self.read_qr_code("QR_SCANNER_2", self.txt_qr_2))
 
         # ================== AC VOLTAGE (SINGLE METER) ==================
-        self.btn_read_r_v.clicked.connect(lambda: self.read_modbus("r_v", self.txt_r_v))
-        self.btn_read_y_v.clicked.connect(lambda: self.read_modbus("y_v", self.txt_y_v))
-        self.btn_read_b_v.clicked.connect(lambda: self.read_modbus("b_v", self.txt_b_v))
+        self.btn_read_r_v.clicked.connect(lambda: self.read_modbus("r_n_v", self.txt_r_v))
+        self.btn_read_y_v.clicked.connect(lambda: self.read_modbus("y_n_v", self.txt_y_v))
+        self.btn_read_b_v.clicked.connect(lambda: self.read_modbus("b_n_v", self.txt_b_v))
+        self.btn_read_vry.clicked.connect(lambda: self.read_modbus("r_y_v", self.txt_vry))
+        self.btn_read_vyb.clicked.connect(lambda: self.read_modbus("y_b_v", self.txt_vyb))
+        self.btn_read_vbr.clicked.connect(lambda: self.read_modbus("b_r_v", self.txt_vbr))
 
         # ================== IMPEDANCE METERS (2) ==================
         self.btn_read_rn_r_1.clicked.connect(lambda: self.read_modbus("imp_rn_1", self.txt_rn_r_1))
@@ -189,12 +235,24 @@ class DebugView(QWidget):
         self.btn_read_bn_r_2.clicked.connect(lambda: self.read_modbus("imp_bn_2", self.txt_bn_r_2))
 
         # ================== DC VOLTAGE METERS (2) ==================
-        self.btn_read_dc_v_1.clicked.connect(lambda: self.read_modbus("dc_v", self.txt_dc_v_1))
-        self.btn_read_dc_v_2.clicked.connect(lambda: self.read_modbus("dc_v", self.txt_dc_v_2))
+        self.btn_read_dc_v_1.clicked.connect(lambda: self.read_modbus("dc_v_1", self.txt_dc_v_1))
+        self.btn_read_dc_v_2.clicked.connect(lambda: self.read_modbus("dc_v_2", self.txt_dc_v_2))
 
         # ================== DC CURRENT METERS (2) ==================
-        self.btn_read_dc_i_1.clicked.connect(lambda: self.read_modbus("dc_i", self.txt_dc_i_1))
-        self.btn_read_dc_i_2.clicked.connect(lambda: self.read_modbus("dc_i", self.txt_dc_i_2))
+        self.btn_read_dc_i_1.clicked.connect(lambda: self.read_modbus("dc_i_1", self.txt_dc_i_1))
+        self.btn_read_dc_i_2.clicked.connect(lambda: self.read_modbus("dc_i_2", self.txt_dc_i_2))
+
+        # PCB1 Impedance relays
+        self.btn_imp1_r.clicked.connect(lambda: self.toggle_imp_relay("IMP1_R", self.btn_imp1_r))
+        self.btn_imp1_y.clicked.connect(lambda: self.toggle_imp_relay("IMP1_Y", self.btn_imp1_y))
+        self.btn_imp1_b.clicked.connect(lambda: self.toggle_imp_relay("IMP1_B", self.btn_imp1_b))
+        self.btn_imp1_n.clicked.connect(lambda: self.toggle_imp_relay("IMP1_N", self.btn_imp1_n))
+
+        # PCB2 relays
+        self.btn_imp2_r.clicked.connect(lambda: self.toggle_imp_relay("IMP2_R", self.btn_imp2_r))
+        self.btn_imp2_y.clicked.connect(lambda: self.toggle_imp_relay("IMP2_Y", self.btn_imp2_y))
+        self.btn_imp2_b.clicked.connect(lambda: self.toggle_imp_relay("IMP2_B", self.btn_imp2_b))
+        self.btn_imp2_n.clicked.connect(lambda: self.toggle_imp_relay("IMP2_N", self.btn_imp2_n))
 
     # =========================================================================
 
@@ -229,49 +287,71 @@ class DebugView(QWidget):
                 print(f"  → Writing coil {coil} = {state}")
                 mb.write_coil(s, coil, state)
 
+            # -------------------------------------------------
             # Neutral
             neutral_state = self.cmb_n.currentText() == "C"
             print(f"Neutral selection: {self.cmb_n.currentText()} -> {neutral_state}")
             write(c["NEUTRAL"], neutral_state)
 
-            # Voltage selections
+            # -------------------------------------------------
+            # Voltage selections (COMMON transformer tap)
             rv = self.cmb_r.currentText()
             yv = self.cmb_y.currentText()
             bv = self.cmb_b.currentText()
 
             print(f"Voltage selections: R={rv}, Y={yv}, B={bv}")
 
-            # R phase voltage
-            print("Resetting R-phase voltage taps")
-            for t in VOLTAGE_TAPPINGS:
-                if t != "NC":
-                    write(c[f"R_{t.replace('V', '')}"], False)
+            # -------------------------------------------------
+            # Phase enable control
+            write(c["R_EN"], rv != "NC")
+            write(c["Y_EN"], yv != "NC")
+            write(c["B_EN"], bv != "NC")
 
-            if rv != "NC":
-                print(f"Setting R-phase voltage tap: {rv}")
-                write(c[f"R_{rv.replace('V', '')}"], True)
+            print(
+                f"Phase enables → "
+                f"R_EN={rv != 'NC'}, "
+                f"Y_EN={yv != 'NC'}, "
+                f"B_EN={bv != 'NC'}"
+            )
 
-            # Y phase voltage
-            print("Resetting Y-phase voltage taps")
-            for t in VOLTAGE_TAPPINGS:
-                if t != "NC":
-                    write(c[f"Y_{t.replace('V', '')}"], False)
+            # -------------------------------------------------
+            print("Resetting ALL transformer voltage taps")
 
-            if yv != "NC":
-                print(f"Setting Y-phase voltage tap: {yv}")
-                write(c[f"Y_{yv.replace('V', '')}"], True)
+            for name, addr in c.items():
+                if name.startswith("T_"):
+                    write(addr, False)
 
-            # B phase voltage
-            print("Resetting B-phase voltage taps")
-            for t in VOLTAGE_TAPPINGS:
-                if t != "NC":
-                    write(c[f"B_{t.replace('V', '')}"], False)
+            # -------------------------------------------------
+            # Decide which voltage tap to apply
+            # Priority: R → Y → B (first non-NC)
 
-            if bv != "NC":
-                print(f"Setting B-phase voltage tap: {bv}")
-                write(c[f"B_{bv.replace('V', '')}"], True)
+            selected_voltage = None
 
-            # 🔹 Current 1 & 2
+            for v in (rv, yv, bv):
+                if v != "NC":
+                    selected_voltage = v
+                    break
+
+            if selected_voltage:
+                if selected_voltage == "240V":
+                    if neutral_state:
+                        tap_key = "240"
+                    else:
+                        tap_key = "138"
+                else:
+                    tap_key = VLL_TO_TAP.get(
+                        selected_voltage,
+                        selected_voltage.replace("V", "")
+                    )
+
+                print(f"Applying COMMON voltage tap: {selected_voltage} → T_{tap_key}")
+                write(c[f"T_{tap_key}"], True)
+
+            else:
+                print("No voltage tap selected (all phases NC)")
+
+            # -------------------------------------------------
+            # 🔹 Current 1 & 2 (UNCHANGED)
             print("Resetting all current taps (CUR1 & CUR2)")
             for i in CURRENT_TAPPINGS:
                 if i != "0A":
@@ -318,6 +398,125 @@ class DebugView(QWidget):
             QMessageBox.information(self, "Done", "Relays reset")
         except Exception as e:
             logger.error(f"Reset failed: {e}")
+            QMessageBox.warning(self, "Error", str(e))
+        finally:
+            self._close_modbus()
+
+    # -------------------------------------------------
+    def toggle_main_contactor(self):
+        try:
+            mb = self._get_modbus()
+            plc = SLAVE_DEVICES["PLC"]
+
+            coil_addr = plc["coils"]["MAIN_CONTACTOR"]
+            slave_id = plc["slave_id"]
+
+            # Toggle state
+            self.main_contactor_on = not self.main_contactor_on
+
+            # Write to PLC
+            mb.write_coil(slave_id, coil_addr, self.main_contactor_on)
+
+            # Update UI
+            if self.main_contactor_on:
+                self.btn_main.setText("MAIN : OFF")
+                self.btn_main.setStyleSheet(
+                    "background-color: #dc3545; color: white; font-weight: bold; font-size: 14pt;"
+                )
+                logger.info("MAIN_CONTACTOR turned ON")
+            else:
+                self.btn_main.setText("MAIN : ON")
+                self.btn_main.setStyleSheet(
+                    "background-color: #28a745; color: white; font-weight: bold; font-size: 14pt;"
+                )
+                logger.info("MAIN_CONTACTOR turned OFF")
+
+        except Exception as e:
+            logger.error(f"Main Contactor toggle failed: {e}")
+            QMessageBox.warning(self, "Error", str(e))
+        finally:
+            self._close_modbus()
+
+    def toggle_impedance_pcb1(self):
+        try:
+            mb = self._get_modbus()
+            plc = SLAVE_DEVICES["PLC"]
+
+            self.imp_test_pcb1_on = not self.imp_test_pcb1_on
+            mb.write_coil(plc["slave_id"], plc["coils"]["IMP1_TEST_EN"], self.imp_test_pcb1_on)
+
+            if self.imp_test_pcb1_on:
+                self.btn_imp_test_pcb1.setText("IMPEDANCE TEST PCB 1 : OFF")
+                self.btn_imp_test_pcb1.setStyleSheet("background-color:#dc3545;color:white;font-weight:bold;")
+            else:
+                self.btn_imp_test_pcb1.setText("IMPEDANCE TEST PCB 1 : ON")
+                self.btn_imp_test_pcb1.setStyleSheet("background-color:#28a745;color:white;font-weight:bold;")
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
+        finally:
+            self._close_modbus()
+
+    def toggle_impedance_pcb2(self):
+        try:
+            mb = self._get_modbus()
+            plc = SLAVE_DEVICES["PLC"]
+
+            self.imp_test_pcb2_on = not self.imp_test_pcb2_on
+            mb.write_coil(plc["slave_id"], plc["coils"]["IMP2_TEST_EN"], self.imp_test_pcb2_on)
+
+            if self.imp_test_pcb2_on:
+                self.btn_imp_test_pcb2.setText("IMPEDANCE TEST PCB 2 : OFF")
+                self.btn_imp_test_pcb2.setStyleSheet("background-color:#dc3545;color:white;font-weight:bold;")
+            else:
+                self.btn_imp_test_pcb2.setText("IMPEDANCE TEST PCB 2 : ON")
+                self.btn_imp_test_pcb2.setStyleSheet("background-color:#28a745;color:white;font-weight:bold;")
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
+        finally:
+            self._close_modbus()
+
+    def toggle_pcb2_enable(self):
+        try:
+            mb = self._get_modbus()
+            plc = SLAVE_DEVICES["PLC"]
+
+            self.pcb2_enabled = not self.pcb2_enabled
+            mb.write_coil(plc["slave_id"], plc["coils"]["PCB_2_EN"], self.pcb2_enabled)
+
+            if self.pcb2_enabled:
+                self.btn_pcb2_enable.setText("PCB 2 ENABLE : OFF")
+                self.btn_pcb2_enable.setStyleSheet("background-color:#dc3545;color:white;font-weight:bold;")
+            else:
+                self.btn_pcb2_enable.setText("PCB 2 ENABLE : ON")
+                self.btn_pcb2_enable.setStyleSheet("background-color:#28a745;color:white;font-weight:bold;")
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
+        finally:
+            self._close_modbus()
+
+    def toggle_imp_relay(self, relay_name, button):
+        try:
+            mb = self._get_modbus()
+            plc = SLAVE_DEVICES["PLC"]
+
+            # Toggle state
+            self.imp_relays[relay_name] = not self.imp_relays[relay_name]
+
+            # Write coil
+            mb.write_coil(plc["slave_id"], plc["coils"][relay_name], self.imp_relays[relay_name])
+
+            # Update UI
+            if self.imp_relays[relay_name]:
+                button.setText(f"{relay_name} : OFF")
+                button.setStyleSheet("background-color:#dc3545;color:white;font-weight:bold;")
+            else:
+                button.setText(f"{relay_name} : ON")
+                button.setStyleSheet("background-color:#28a745;color:white;font-weight:bold;")
+
+        except Exception as e:
             QMessageBox.warning(self, "Error", str(e))
         finally:
             self._close_modbus()

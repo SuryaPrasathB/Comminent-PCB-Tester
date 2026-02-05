@@ -23,9 +23,18 @@ SERIAL_SETTINGS = {
 
 logger.info("SERIAL_SETTINGS loaded")
 
-NEUTRAL_OPTIONS = ["NC", "C"]
-VOLTAGE_TAPPINGS = ["NC", "138V", "144V", "240V", "265V", "500V", "510V", "520V", "530V"]
+NEUTRAL_OPTIONS  = ["NC", "C"]
+#VOLTAGE_TAPPINGS = ["NC", "138V", "144V", "240V", "265V", "500V", "510V", "520V", "530V"]
+VOLTAGE_TAPPINGS = ["530V", "520V", "510V", "500V", "265V", "240V", "144V", "138V", "NC"]
 CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
+
+VLL_TO_TAP = {
+    "530V": "306",
+    "520V": "300",
+    "510V": "295",
+    "500V": "288",
+    "240V": "138",
+}
 
 '''
     //=======================================================
@@ -39,68 +48,53 @@ CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
     '295V': 6, // VLL = 510; 
     '300V': 7, // VLL = 520; 
     '306V': 8, // VLL = 530; 
+    
     //=======================================================
      PLC Coil mapping:
+     // Mapped as per Electrical drawing made.
+    'MAIN_CONTACTOR' : 1,
+    //=====================
+    // Transformer tapping - For all 3 phases (R, Y, B) =================
+    'T_306': 2,  // VLL = 530
+    'T_300': 3,  // VLL = 520
+    'T_295': 4,  // VLL = 510
+    'T_288': 5,  // VLL = 500
+    'T_265': 6,
+    'T_240': 7,
+    'T_144': 8,
+    'T_138': 9,   // VLL = 240
+    //==========================
+    'R_EN = 10,
+    'Y_EN = 11,
+    'B_EN = 12,
+    //==========================
+    'PCB_2_EN' : 13,
+    'NEUTRAL'  : 14,
+    //==========================
+    'IMP1_R'   : 15,   // 1st PCB
+    'IMP1_Y'   : 16,   // 1st PCB
+    'IMP1_B'   : 17    // 1st PCB
+    'IMP1_N'   : 18    // 1st PCB
+    
+    'IMP2_R'   : 19,   // 2nd PCB
+    'IMP2_Y'   : 20,   // 2nd PCB
+    'IMP2_B'   : 21    // 2nd PCB                                                                                                                                        
+    'IMP2_N'   : 22    // 2nd PCB
+    //==========================
+    'CUR1_0_5' :  23, // 1st PCB
+    'CUR1_1_25':  24, // 1st PCB
+    'CUR1_2_5' :  25, // 1st PCB
 
-    'NEUTRAL': 0,
+    'CUR2_0_5' :  26, // 2nd PCB
+    'CUR2_1_25':  27, // 2nd PCB
+    'CUR2_2_5' :  28, // 2nd PCB
+    //==========================
+    'IMP1_TEST_EN': 29,  // 1st PCB
+    'IMP2_TEST_EN': 30,  // 2nd PCB
+    //==========================
+    'ALARM' : 31
+    //=========================
 
-    // ================= R Phase =================
-    'R_138': 1,   // VLL = 240
-    'R_144': 2,
-    'R_240': 3,
-    'R_265': 4,
-    'R_288': 5,   // VLL = 500
-    'R_295': 6,   // VLL = 510
-    'R_300': 7,   // VLL = 520
-    'R_306': 8,   // VLL = 530
-
-    // ================= Y Phase =================
-    'Y_138': 9,   // VLL = 240
-    'Y_144': 10,
-    'Y_240': 11,
-    'Y_265': 12,
-    'Y_288': 13,  // VLL = 500
-    'Y_295': 14,  // VLL = 510
-    'Y_300': 15,  // VLL = 520
-    'Y_306': 16,  // VLL = 530
-
-    // ================= B Phase =================
-    'B_138': 17,  // VLL = 240
-    'B_144': 18,
-    'B_240': 19,
-    'B_265': 20,
-    'B_288': 21,  // VLL = 500
-    'B_295': 22,  // VLL = 510
-    'B_300': 23,  // VLL = 520
-    'B_306': 24   // VLL = 530
-
-    //=========================================
-    'CUR1_0_5':  25, // 1st PCB
-    'CUR1_1_25': 26, // 1st PCB
-    'CUR1_2_5':  27, // 1st PCB
-
-    'CUR2_0_5':  28, // 2nd PCB
-    'CUR2_1_25': 29, // 2nd PCB
-    'CUR2_2_5':  30, // 2nd PCB
-
-    //=============================================
-    'IMP1_R': 31, // 1st PCB
-    'IMP1_Y': 32, // 1st PCB
-    'IMP1_B': 33  // 1st PCB
-    'IMP1_N': 33  // 1st PCB
-
-    'IMP2_R': 35, // 2nd PCB
-    'IMP2_Y': 36, // 2nd PCB
-    'IMP2_B': 37  // 2nd PCB                                                                                                                                        
-    'IMP2_N': 38  // 1st PCB
-    //=============================================
-
-    Voltage Part - 25 No.s
-    Current      - 3 + 3  
-    Impedance    - 4 + 4
-
-    //=======================================================
-    UI representation:
 
 '''
 
@@ -121,19 +115,69 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
     addr = start_addr
 
     # =======================================================
-    # NEUTRAL (common)
+    # Main Contactor
+    coils["MAIN_CONTACTOR"] = addr
+    addr += 1
+
+    # =======================================================
+    # Transformer tapping (COMMON for R/Y/B)
+    # Order: High → Low (as per electrical drawing)
+
+    tap_keys = []
+
+    for tap in voltage_tappings:
+        if tap == "NC":
+            continue
+
+        # High voltage taps must use mapped values only
+        if tap in VLL_TO_TAP:
+            mapped_key = VLL_TO_TAP[tap]
+            if mapped_key not in tap_keys:
+                tap_keys.append(mapped_key)
+
+            # Special case:
+            # 240V also needs direct tap
+            if tap == "240V" and "240" not in tap_keys:
+                tap_keys.append("240")
+
+        else:
+            direct_key = tap.replace("V", "")
+            if direct_key not in tap_keys:
+                tap_keys.append(direct_key)
+
+    # ---- Sort as per electrical drawing (High → Low) ----
+    tap_keys = sorted(tap_keys, key=lambda x: int(x), reverse=True)
+
+    # ---- Assign addresses ----
+    for tap_key in tap_keys:
+        coils[f"T_{tap_key}"] = addr
+        addr += 1
+
+    # =======================================================
+    # Phase enable contactors
+    coils["R_EN"] = addr; addr += 1
+    coils["Y_EN"] = addr; addr += 1
+    coils["B_EN"] = addr; addr += 1
+
+    # =======================================================
+    # PCB selection & Neutral
+    coils["PCB_2_EN"] = addr
+    addr += 1
+
     coils["NEUTRAL"] = addr
     addr += 1
 
     # =======================================================
-    # Voltage selection coils (COMMON for both PCBs)
-    for phase in ("R", "Y", "B"):
-        for tap in voltage_tappings:
-            if tap == "NC":
-                continue
-            tap_key = tap.replace("V", "")
-            coils[f"{phase}_{tap_key}"] = addr
-            addr += 1
+    # Impedance relays – PCB 1
+    for phase in ("R", "Y", "B", "N"):
+        coils[f"IMP1_{phase}"] = addr
+        addr += 1
+
+    # =======================================================
+    # Impedance relays – PCB 2
+    for phase in ("R", "Y", "B", "N"):
+        coils[f"IMP2_{phase}"] = addr
+        addr += 1
 
     # =======================================================
     # Current selection – PCB 1 & PCB 2
@@ -146,19 +190,22 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
             addr += 1
 
     # =======================================================
-    # Impedance test – PCB 1
-    for phase in ("R", "Y", "B", "N"):
-        coils[f"IMP1_{phase}"] = addr
-        addr += 1
+    # Impedance test enable
+    coils["IMP1_TEST_EN"] = addr
+    addr += 1
+
+    coils["IMP2_TEST_EN"] = addr
+    addr += 1
 
     # =======================================================
-    # Impedance test – PCB 2
-    for phase in ("R", "Y", "B", "N"):
-        coils[f"IMP2_{phase}"] = addr
-        addr += 1
+    # Alarm
+    coils["ALARM"] = addr
+    addr += 1
 
+    # =======================================================
+    # PRINT SUMMARY
     print("\n--- PLC COIL MAP (SUMMARY) ---")
-    for name, address in coils.items():
+    for name, address in sorted(coils.items(), key=lambda x: x[1]):
         print(f"{address:04d} : {name}")
 
     print("\n//=======================================================\n")
@@ -166,8 +213,6 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
 
     logger.info(f"PLC coils generated | Total coils={len(coils)}")
     return coils
-
-
 
 
 # =====================================================
@@ -198,14 +243,20 @@ SLAVE_DEVICES = {
         "slave_id": 2,
         "endian": "CDAB",
         "registers": {
-            "R_VOLTAGE": 0x008E,
-            "Y_VOLTAGE": 0x0090,
-            "B_VOLTAGE": 0x0092,
+            "R_N_VOLTAGE": 0x008E,
+            "Y_N_VOLTAGE": 0x0090,
+            "B_N_VOLTAGE": 0x0092,
+            "R_Y_VOLTAGE": 0x0086,
+            "Y_B_VOLTAGE": 0x0088,
+            "B_R_VOLTAGE": 0x008A,
         },
         "reads": {
-            "r_v": "R_VOLTAGE",
-            "y_v": "Y_VOLTAGE",
-            "b_v": "B_VOLTAGE",
+            "r_n_v": "R_N_VOLTAGE",
+            "y_n_v": "Y_N_VOLTAGE",
+            "b_n_v": "B_N_VOLTAGE",
+            "r_y_v": "R_Y_VOLTAGE",
+            "y_b_v": "Y_B_VOLTAGE",
+            "b_r_v": "B_R_VOLTAGE",
         },
         "display_name": "Ac Meter"
     },
@@ -249,7 +300,7 @@ SLAVE_DEVICES = {
             "DC_VOLTAGE": 0x0BB7,
         },
         "reads": {
-            "dc_v": "DC_VOLTAGE",
+            "dc_v_1": "DC_VOLTAGE",
         },
         "display_name": "Dc Voltmeter 1"
     },
@@ -261,7 +312,7 @@ SLAVE_DEVICES = {
             "DC_VOLTAGE": 0x0BB7,
         },
         "reads": {
-            "dc_v": "DC_VOLTAGE",
+            "dc_v_2": "DC_VOLTAGE",
         },
         "display_name": "Dc Voltmeter 2"
     },
@@ -270,10 +321,10 @@ SLAVE_DEVICES = {
         "slave_id": 18,
         "endian": "ABCD",
         "registers": {
-            "DC_CURRENT": 0x0BB7,
+            "DC_CURRENT": 0x0BB9,
         },
         "reads": {
-            "dc_v": "DC_CURRENT",
+            "dc_i_1": "DC_CURRENT",
         },
         "display_name": "Dc Ammeter 1"
     },
@@ -285,7 +336,7 @@ SLAVE_DEVICES = {
             "DC_CURRENT": 0x0BB9,
         },
         "reads": {
-            "dc_i": "DC_CURRENT",
+            "dc_i_2": "DC_CURRENT",
         },
         "display_name": "Dc Ammeter 2"
     }

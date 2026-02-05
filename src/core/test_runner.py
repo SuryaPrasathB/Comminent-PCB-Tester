@@ -9,7 +9,8 @@ from src.core.drivers.modbus_driver import ModbusRTU
 
 from src.core.config import (
     SLAVE_DEVICES,
-    VOLTAGE_TOLERANCE_PERCENT, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, CURRENT_TOLERANCE_PERCENT, STABILIZATION_TIME, MIN_IMPEDANCE_MOHM
+    VOLTAGE_TOLERANCE_PERCENT, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, CURRENT_TOLERANCE_PERCENT, STABILIZATION_TIME,
+    MIN_IMPEDANCE_MOHM, VLL_TO_TAP
 )
 
 from src.core.logger import logger
@@ -28,16 +29,18 @@ class TestRunner(QThread):
             test_cases,
             com_port,
             start_index=0,
+            active_pcbs=(1,),  # 👈 ADD THIS
             run_single=False
     ):
         super().__init__()
 
         self.project_name = project_name
-        self.pcb_serial = pcb_serial
-        self.test_cases = test_cases
-        self.start_index = start_index
-        self.run_single = run_single
-        self.com_port = com_port
+        self.pcb_serials  = pcb_serial  # tuple now
+        self.test_cases   = test_cases
+        self.start_index  = start_index
+        self.run_single   = run_single
+        self.com_port     = com_port
+        self.active_pcbs  = active_pcbs
 
         self._stop_requested = False
         self._fatal_error = False
@@ -48,10 +51,11 @@ class TestRunner(QThread):
         print(f"[TEST] Project    : {project_name}")
         print(f"[TEST] PCB Serial : {pcb_serial}")
         print(f"[TEST] COM Port   : {com_port}")
-        print(f"[TEST] Run Single: {run_single}")
+        print(f"[TEST] Run Single : {run_single}")
+        print(f"[TEST] Active PCBs: {active_pcbs}")
 
         logger.info("TestRunner initialized")
-        logger.info(f"Project={project_name}, PCB={pcb_serial}, COM={com_port}, RunSingle={run_single}")
+        logger.info(f"Project={project_name}, PCB={pcb_serial}, COM={com_port}, RunSingle={run_single}, ActivePCBs={active_pcbs}")
 
     # -------------------------------------------------
     # Logging helpers
@@ -86,10 +90,15 @@ class TestRunner(QThread):
 
             self.modbus = ModbusRTU(port=self.com_port)
 
+            plc = SLAVE_DEVICES["PLC"]
+            plc_slave = plc["slave_id"]
+            coils = plc["coils"]
+
             if self.run_single:
                 print(f" Single Test Case: {self.test_cases[self.start_index]}")
                 logger.info("Running single test case")
                 self._execute_test(self.test_cases[self.start_index])
+
             else:
                 for tc in self.test_cases[self.start_index:]:
                     if self._stop_requested or self._fatal_error:
@@ -101,6 +110,23 @@ class TestRunner(QThread):
             self._fatal_comm_error("Modbus", "-", e)
 
         finally:
+            # SAFETY: FORCE MAINS OFF (always)
+            if self.modbus:
+                try:
+                    plc = SLAVE_DEVICES["PLC"]
+                    plc_slave = plc["slave_id"]
+                    coils = plc["coils"]
+
+                    print("[PLC] MAINS OFF (final safety)")
+                    logger.info("MAINS OFF (final safety)")
+
+                    self.modbus.write_coil( plc_slave,coils["MAIN_CONTACTOR"],False)
+                    time.sleep(0.1)
+
+                except Exception as e:
+                    logger.warning(f"Failed to turn MAINS OFF safely: {e}")
+
+            # CLOSE MODBUS CONNECTION
             if self.modbus:
                 print("[TEST] Closing Modbus connection")
                 logger.info("Closing Modbus connection")
@@ -109,6 +135,7 @@ class TestRunner(QThread):
                 except Exception:
                     pass
 
+            # FINAL STATUS REPORT
             if self._fatal_error:
                 print("[TEST] Test execution stopped due to ERROR")
                 logger.error("Test execution stopped due to ERROR")
@@ -144,118 +171,21 @@ class TestRunner(QThread):
         # =================================================
         # 1️⃣ IMPEDANCE TEST
         # =================================================
-        if "Impedance" in tc["desc"]: #change it to dynamic one
+        if "Impedance" in tc["desc"]:
             self._sep()
             try:
                 print("[TEST] Mode: Impedance test")
-                logger.info("Mode: Impedance test")
 
-                # --- PLC Functions ---
+                for pcb in self.active_pcbs:
+                    if self._stop_requested or self._fatal_error:
+                        return
 
-                present_slave_name = plc.get("display_name")
-                error_msg = "PLC Communication" # If error happens
+                    self._run_impedance_for_pcb(tc, pcb)
 
-                # R phase (OFF all)
-                for tap in VOLTAGE_TAPPINGS:
-                    tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tap.replace('V', '')}"], False)
-
-                # Y phase (OFF all)
-                for tap in VOLTAGE_TAPPINGS:
-                    tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"Y_{tap.replace('V', '')}"], False)
-
-                # B phase (OFF all)
-                for tap in VOLTAGE_TAPPINGS:
-                    tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"B_{tap.replace('V', '')}"], False)
-
-                # ---- Neutral OFF - Neutral (NC = OFF, C = ON) ----
-                self.modbus.write_coil(plc_slave, coils["NEUTRAL"], False)
-
-                # OFF all current relays
-                for cur in CURRENT_TAPPINGS:
-                    cur != "0A" and self.modbus.write_coil(plc_slave, coils[f"CUR_{cur.replace('A', '').replace('.', '_')}"],False)
-
-                # --- Impedence meter functions
-
-                imp = SLAVE_DEVICES["IMP_METER"]
-                slave = imp["slave_id"]
-                impedance_results = {}  # 🔹 store values in MΩ
-
-                present_slave_name = imp.get("display_name")
-                error_msg = "Impedance Measurement" # If error happens
-
-                # ---- Neutral ON - Neutral (NC = OFF, C = ON) ----
-                self.modbus.write_coil(plc_slave, coils["IMP1_N"], True)
-
-                for phase, coil_key, reg_key in [
-                    ("R", "IMP1_R", "R_N_IMP"),
-                    ("Y", "IMP1_Y", "Y_N_IMP"),
-                    ("B", "IMP1_B", "B_N_IMP"),
-                ]:
-                    print(f"[TEST] Switching {phase}-N")
-                    logger.info(f"Switching {phase}-N")
-
-                    self.modbus.write_coil(plc_slave, coils["IMP1_R"], False)
-                    self.modbus.write_coil(plc_slave, coils["IMP1_Y"], False)
-                    self.modbus.write_coil(plc_slave, coils["IMP1_B"], False)
-
-                    self.modbus.write_coil(plc_slave, coils[coil_key], True)
-                    time.sleep(STABILIZATION_TIME) #(0.2)
-
-                    #endian = imp.get("endian", "ABCD")
-                    endian = imp.get("endian", "ABCD")
-
-                    value = self.modbus.read_float(
-                        slave,
-                        imp["registers"][reg_key],
-                        endian=endian
-                    )
-
-                    # ---- Impedance Meter Phase Relays----
-                    self.modbus.write_coil(plc_slave, coils["IMP1_R"], False)
-                    self.modbus.write_coil(plc_slave, coils["IMP1_Y"], False)
-                    self.modbus.write_coil(plc_slave, coils["IMP1_B"], False)
-
-                    # ---- Impedance Meter Neutral Relay----
-                    self.modbus.write_coil(plc_slave, coils["IMP1_N"], False)
-
-                    impedance_results[phase] = value
-
-                    print(f"[TEST] {phase}-N = {value:.3f} Ω")
-                    logger.info(f"{phase}-N impedance = {value:.3f} Ω")
-
-                # -------------------------------
-                # Validation (> minimum MΩ)
-                # -------------------------------
-
-                all_pass = True
-                for value in impedance_results.values():
-                    if value <= MIN_IMPEDANCE_MOHM:
-                        all_pass = False
-
-                result_text = (
-                    f"Zrn={impedance_results['R']:.3f}MΩ, "
-                    f"Zyn={impedance_results['Y']:.3f}MΩ, "
-                    f"Zbn={impedance_results['B']:.3f}MΩ"
-                )
-
-                if all_pass:
-                    self._task_ok("Impedance Measurement")
-                    final_result = f"PASS ({result_text})"
-                else:
-                    self._task_fail("Impedance Measurement", "Impedance below minimum")
-                    final_result = f"FAIL ({result_text})"
-
-                ac_vals = {
-                    "r_v": f"NA",
-                    "y_v": f"NA",
-                    "b_v": f"NA"
-                }
-                self._finalize(tc, None, None, final_result, ac_vals)  # def _finalize(self, tc, v, i, result, ac_vals=None):
                 return
 
             except Exception as e:
-                self._task_fail(error_msg,  present_slave_name)
-                self._fatal_comm_error("IMP_METER", present_slave_name, e)
+                self._fatal_comm_error("IMP_METER", "-", e)
                 return
 
         # =================================================
@@ -267,74 +197,123 @@ class TestRunner(QThread):
             logger.info("Setting Voltage and Current Relays")
 
             present_slave_name = plc.get("display_name")
-
-            # ---- Neutral (NC = OFF, C = ON) ----
+            print(f"[PLC] Target Slave      : {present_slave_name}")
+            print(f"[PLC] PLC Slave ID      : {plc_slave}")
 
             # =================================================
             # NEUTRAL OPTIONS
             # =================================================
-            # ---- Neutral (NC = OFF, C = ON) ----
             neutral_state = (tc["n"] == "C")
+            print(f"[PLC] NEUTRAL coil -> {'ON (C)' if neutral_state else 'OFF (NC)'}")
+            print(f"[PLC] WRITE coil NEUTRAL = {neutral_state}")
             self.modbus.write_coil(plc_slave, coils["NEUTRAL"], neutral_state)
 
-
             # =================================================
-            # VOLTAGE TAPS
+            # VOLTAGE TAPS (COMMON TRANSFORMER + PHASE ENABLES)
             # =================================================
-            # R phase (OFF all)
-            for tap in VOLTAGE_TAPPINGS:
-                tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tap.replace('V', '')}"], False)
-            # R phase (ON selected)
-            if not neutral_state: #If Neutral Option is NC
-                voltage = int(tc["r"].replace("V", ""))      # extract number from string like "240V"
-                phase_voltage = math.floor(voltage / 1.732)  # divide by sqrt(3) ≈ 1.732 and floor
-                tc["r"] = f"{phase_voltage}V"                # convert back to string with V
 
-                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
+            # Neutral logic (same as above, untouched)
+            neutral_state = (tc["n"] == "C")
+
+            # Phase voltage selections from test case
+            rv = tc["r"]
+            yv = tc["y"]
+            bv = tc["b"]
+
+            print(f"[TEST] Voltage selections → R={rv}, Y={yv}, B={bv}, Neutral={tc['n']}")
+
+            # -------------------------------------------------
+            # Phase ENABLE control
+            print(f"[PLC] WRITE coil R_EN = {rv != 'NC'}")
+            self.modbus.write_coil(plc_slave, coils["R_EN"], rv != "NC")
+
+            print(f"[PLC] WRITE coil Y_EN = {yv != 'NC'}")
+            self.modbus.write_coil(plc_slave, coils["Y_EN"], yv != "NC")
+
+            print(f"[PLC] WRITE coil B_EN = {bv != 'NC'}")
+            self.modbus.write_coil(plc_slave, coils["B_EN"], bv != "NC")
+
+            print(
+                f"[TEST] Phase enables → "
+                f"R_EN={rv != 'NC'}, "
+                f"Y_EN={yv != 'NC'}, "
+                f"B_EN={bv != 'NC'}"
+            )
+
+            # -------------------------------------------------
+            # Reset ALL transformer taps (COMMON)
+            print("[PLC] Resetting ALL transformer taps (COMMON)")
+
+            for name, addr in coils.items():
+                if name.startswith("T_"):
+                    print(f"[PLC] RESET coil {name}")
+                    self.modbus.write_coil(plc_slave, addr, False)
+
+            # -------------------------------------------------
+            # Decide voltage to apply (first non-NC phase)
+            # -------------------------------------------------
+            # Decide voltage to apply (first non-NC phase)
+            selected_voltage = None
+            for v in (rv, yv, bv):
+                if v != "NC":
+                    selected_voltage = v
+                    break
+
+            if selected_voltage:
+                print(f"[TEST] Selected voltage: {selected_voltage}")
+                print("[PLC] Applying transformer tap using drawing mapping")
+
+                # Neutral-specific handling for 240V
+                if selected_voltage == "240V":
+                    if neutral_state:
+                        # Neutral connected → true phase voltage
+                        tap_key = "240"
+                        print("[PLC] Neutral CONNECTED → using T_240")
+                    else:
+                        # Neutral NC → phase voltage via transformer
+                        tap_key = "138"
+                        print("[PLC] Neutral NC → using T_138")
+                else:
+                    # All other voltages → normal mapping
+                    tap_key = VLL_TO_TAP.get(selected_voltage,selected_voltage.replace("V", ""))
+
+                print(f"[PLC] SET transformer tap T_{tap_key}")
+                self.modbus.write_coil( plc_slave,coils[f"T_{tap_key}"],True)
+
             else:
-                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
-
-            # Y phase (OFF all)
-            for tap in VOLTAGE_TAPPINGS:
-                tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"Y_{tap.replace('V', '')}"], False)
-            # Y phase (ON selected)
-            if not neutral_state:  # If Neutral Option is NC
-                voltage = int(tc["r"].replace("V", ""))  # extract number from string like "240V"
-                phase_voltage = math.floor(voltage / 1.732)  # divide by sqrt(3) ≈ 1.732 and floor
-                tc["r"] = f"{phase_voltage}V"  # convert back to string with V
-
-                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
-            else:
-                tc["y"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"Y_{tc['y'].replace('V', '')}"], True)
-
-            # B phase (OFF all)
-            for tap in VOLTAGE_TAPPINGS:
-                tap != "NC" and self.modbus.write_coil(plc_slave, coils[f"B_{tap.replace('V', '')}"], False)
-            # B phase (ON selected)
-            if not neutral_state:  # If Neutral Option is NC
-                voltage = int(tc["r"].replace("V", ""))  # extract number from string like "240V"
-                phase_voltage = math.floor(voltage / 1.732)  # divide by sqrt(3) ≈ 1.732 and floor
-                tc["r"] = f"{phase_voltage}V"  # convert back to string with V
-
-                tc["r"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"R_{tc['r'].replace('V', '')}"], True)
-            else:
-                tc["b"] != "NC" and self.modbus.write_coil(plc_slave, coils[f"B_{tc['b'].replace('V', '')}"], True)
+                print("[TEST] No voltage applied (all phases NC)")
 
             # =================================================
             # CURRENT TAPS
             # =================================================
-            # OFF all current relays
+            print("[PLC] Resetting ALL current relays")
             for cur in CURRENT_TAPPINGS:
-                cur != "0A" and self.modbus.write_coil(plc_slave,coils[f"CUR_{cur.replace('A', '').replace('.', '_')}"], False)
-            # ON selected current relay
-            tc["i"] != "0A" and self.modbus.write_coil(plc_slave,coils[f"CUR_{tc['i'].replace('A', '').replace('.', '_')}"], True)
-            # =================================================
+                if cur != "0A":
+                    print(f"[PLC] RESET coil CUR1_{cur.replace('A', '').replace('.', '_')}")
+                    self.modbus.write_coil(plc_slave, coils[f"CUR1_{cur.replace('A', '').replace('.', '_')}"], False)
+
+            if tc["i"] != "0A":
+                print(f"[PLC] SET current tap CUR1_{tc['i'].replace('A', '').replace('.', '_')}")
+                self.modbus.write_coil(plc_slave, coils[f"CUR1_{tc['i'].replace('A', '').replace('.', '_')}"], True)
+            else:
+                print("[PLC] No current applied (0A selected)")
 
             print("[TEST] Waiting for stabilization (cool-down)")
             logger.info("Waiting for stabilization")
             time.sleep(STABILIZATION_TIME)
 
             self._task_ok("Setting Voltage and Current Relays")
+
+            # =================================================
+            # MAINS ON (for non-impedance tests only)
+            # =================================================
+            print("[PLC] MAINS ON → MAIN_CONTACTOR = ON")
+            logger.info("MAINS ON → MAIN_CONTACTOR ON")
+
+            self.modbus.write_coil( plc_slave, coils["MAIN_CONTACTOR"],True)
+
+            # Allow contactor + transformer to settle
+            time.sleep(STABILIZATION_TIME)
 
         except Exception as e:
             self._task_fail("Setting Voltage and Current Relays", present_slave_name)
@@ -351,23 +330,54 @@ class TestRunner(QThread):
 
             ac = SLAVE_DEVICES["AC_METER"]
             endian = ac.get("endian", "ABCD")
-            present_slave_name =  ac.get("display_name")
+            present_slave_name = ac.get("display_name")
 
-            r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_VOLTAGE"], endian=endian)
-            y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_VOLTAGE"], endian=endian)
-            b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_VOLTAGE"], endian=endian)
+            # ---------------------------------------------
+            # Decide which voltages to read based on Neutral
+            # ---------------------------------------------
+            neutral_connected = (tc["n"] == "C")
 
-            print(f"[TEST] R Phase Voltage = {r_v:.3f} V")
-            print(f"[TEST] Y Phase Voltage = {y_v:.3f} V")
-            print(f"[TEST] B Phase Voltage = {b_v:.3f} V")
+            if neutral_connected:
+                print("[TEST] Neutral CONNECTED → Reading Phase-to-Neutral Voltages")
+                logger.info("Neutral CONNECTED → Reading Phase-to-Neutral Voltages")
 
-            logger.info(f"AC Voltages → R={r_v:.3f}, Y={y_v:.3f}, B={b_v:.3f}")
+                r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_N_VOLTAGE"], endian=endian)
+                y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_N_VOLTAGE"], endian=endian)
+                b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_N_VOLTAGE"], endian=endian)
 
-            ac_vals = {
-                "r_v": f"{r_v:.3f}",
-                "y_v": f"{y_v:.3f}",
-                "b_v": f"{b_v:.3f}"
-            }
+                print(f"[TEST] R-N Voltage = {r_v:.3f} V")
+                print(f"[TEST] Y-N Voltage = {y_v:.3f} V")
+                print(f"[TEST] B-N Voltage = {b_v:.3f} V")
+
+                logger.info(
+                    f"AC Voltages (P-N) → R-N={r_v:.3f}, Y-N={y_v:.3f}, B-N={b_v:.3f}"
+                )
+
+                ac_vals = {
+                    "r_v": f"{r_v:.3f}",
+                    "y_v": f"{y_v:.3f}",
+                    "b_v": f"{b_v:.3f}",
+                }
+
+            else:
+                print("[TEST] Neutral NC → Reading Phase-to-Phase  1")
+                logger.info("Neutral NC → Reading Phase-to-Phase Voltages")
+
+                r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_Y_VOLTAGE"], endian=endian)
+                y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_B_VOLTAGE"], endian=endian)
+                b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_R_VOLTAGE"], endian=endian)
+
+                print(f"[TEST] R-Y Voltage = {r_v:.3f} V")
+                print(f"[TEST] Y-B Voltage = {y_v:.3f} V")
+                print(f"[TEST] B-R Voltage = {b_v:.3f} V")
+
+                logger.info(f"AC Voltages (P-P) → R-Y={r_v:.3f}, Y-B={y_v:.3f}, B-R={b_v:.3f}")
+
+                ac_vals = {
+                    "r_v": f"{r_v:.3f}",
+                    "y_v": f"{y_v:.3f}",
+                    "b_v": f"{b_v:.3f}",
+                }
 
             self._task_ok("Reading AC Voltages")
 
@@ -384,12 +394,12 @@ class TestRunner(QThread):
             print("[TEST] Reading DC Voltage and Current")
             logger.info("Reading DC Voltage and Current")
 
-            dc_v = SLAVE_DEVICES["DC_V_METER"]
+            dc_v = SLAVE_DEVICES["DC_V_METER_1"]
             dc_v_endian = dc_v.get("endian", "ABCD")
             present_slave_name =  dc_v.get("display_name")
             measured_v = self.modbus.read_float(dc_v["slave_id"], dc_v["registers"]["DC_VOLTAGE"], endian=dc_v_endian)
 
-            dc_i = SLAVE_DEVICES["DC_I_METER"]
+            dc_i = SLAVE_DEVICES["DC_I_METER_1"]
             dc_i_endian = dc_i.get("endian", "ABCD")
             present_slave_name =  dc_i.get("display_name")
             measured_i = self.modbus.read_float(dc_i["slave_id"], dc_i["registers"]["DC_CURRENT"], endian=dc_i_endian)
@@ -433,23 +443,24 @@ class TestRunner(QThread):
 
         print(f"[TEST] Result = {result}")
         logger.info(f"Test Result = {result}")
-        self._finalize(tc, measured_v, measured_i, result, ac_vals)
+
+        for pcb in self.active_pcbs:
+            self._finalize(tc, pcb, measured_v, measured_i, result, ac_vals)
 
     # -------------------------------------------------
-    def _finalize(self, tc, v, i, result, ac_vals=None):
+    def _finalize(self, tc, pcb_index, v, i, result, ac_vals=None):
         v_meas = f"{v:.3f}" if v is not None else "NA"
         i_meas = f"{i:.3f}" if i is not None else "NA"
-
-        #v_exp = f"{tc['v']}" if tc.get("v") is not None else "NA"
-        #i_exp = f"{tc['i']}" if tc.get("i") is not None else "NA"
 
         if not self.run_single:
             print("[TEST] Saving result to database")
             logger.info("Saving test result to database")
 
+            pcb_serial = self.pcb_serials[pcb_index - 1]
+
             save_test_result(
                 self.project_name,
-                self.pcb_serial,
+                pcb_serial,
                 tc["sn"],
                 {
                     "desc": tc["desc"],
@@ -471,6 +482,7 @@ class TestRunner(QThread):
 
         payload = {
             "sn": tc["sn"],
+            "pcb_index": pcb_index,
             "v": tc['v'],
             "i": tc['i'],
             "measured_v": v_meas,
@@ -488,6 +500,153 @@ class TestRunner(QThread):
         self.result_signal.emit(payload)
 
     # -------------------------------------------------
+    def _run_impedance_for_pcb(self, tc, pcb_index):
+
+        plc = SLAVE_DEVICES["PLC"]
+        plc_slave = plc["slave_id"]
+        coils = plc["coils"]
+
+        prefix = f"IMP{pcb_index}"
+
+        test_en = f"{prefix}_TEST_EN"
+        r_coil = f"{prefix}_R"
+        y_coil = f"{prefix}_Y"
+        b_coil = f"{prefix}_B"
+        n_coil = f"{prefix}_N"
+
+        print(f"\n[TEST][PCB{pcb_index}] ===============================")
+        print(f"[TEST][PCB{pcb_index}] Starting impedance measurement")
+
+
+        # -------------------------------------------------
+        # 2) FULL ELECTRICAL ISOLATION (VERY IMPORTANT)
+        # -------------------------------------------------
+        print("[PLC] Resetting ALL transformer taps (COMMON)")
+        for tap in VOLTAGE_TAPPINGS:
+            if tap == "NC":
+                continue
+
+            tap_key = VLL_TO_TAP.get(tap, tap.replace("V", ""))
+            print(f"[PLC] RESET coil T_{tap_key}")
+            self.modbus.write_coil(plc_slave,coils[f"T_{tap_key}"],False)
+
+        # Disable phase contactors (very important before megger)
+        # COmmon for both the PCBs
+        print(f"[PCB{pcb_index}] Disabling phase contactors R/Y/B")
+        self.modbus.write_coil(plc_slave, coils["R_EN"], False)
+        self.modbus.write_coil(plc_slave, coils["Y_EN"], False)
+        self.modbus.write_coil(plc_slave, coils["B_EN"], False)
+
+        # Disable PCB 2 Contactor
+        self.modbus.write_coil(plc_slave, coils["PCB_2_EN"], False)
+
+        # Neutral OFF
+        print(f"[PCB{pcb_index}] NEUTRAL OFF")
+        self.modbus.write_coil(plc_slave, coils["NEUTRAL"], False)
+
+        # Disable ALL current relays for BOTH PCBs
+        print(f"[PCB{pcb_index}] Isolating current paths (CUR1 + CUR2 OFF)")
+        for cur in CURRENT_TAPPINGS:
+            if cur != "0A":
+                cur_key = cur.replace('A', '').replace('.', '_')
+
+                self.modbus.write_coil(plc_slave, coils[f"CUR1_{cur_key}"], False)
+                self.modbus.write_coil(plc_slave, coils[f"CUR2_{cur_key}"], False)
+
+                print(f"[PCB{pcb_index}] CUR1_{cur_key}=OFF , CUR2_{cur_key}=OFF")
+
+        # -------------------------------------------------
+        # 1) ENABLE IMPEDANCE PATH
+        # -------------------------------------------------
+        print(f"[PCB{pcb_index}] TEST PATH ENABLE")
+        self.modbus.write_coil(plc_slave, coils[test_en], True)
+        time.sleep(0.1)
+
+        # -------------------------------------------------
+        # 3) IMPEDANCE MEASUREMENT (PCB SPECIFIC METER)
+        # -------------------------------------------------
+
+        # Select correct impedance meter based on PCB
+        imp_key = f"IMP_METER_{pcb_index}"
+        imp = SLAVE_DEVICES[imp_key]
+
+        slave = imp["slave_id"]
+        endian = imp.get("endian", "ABCD")
+
+        print(f"[PCB{pcb_index}] Using {imp['display_name']} (Slave {slave})")
+
+        impedance_results = {}
+
+        # Connect Neutral of selected PCB
+        print(f"[PCB{pcb_index}] Connecting Neutral path")
+        self.modbus.write_coil(plc_slave, coils[n_coil], True)
+        time.sleep(0.15)
+
+        for phase, coil_key, reg_key in [
+            ("R", r_coil, "R_N_IMP"),
+            ("Y", y_coil, "Y_N_IMP"),
+            ("B", b_coil, "B_N_IMP"),
+        ]:
+            print(f"\n[PCB{pcb_index}] Measuring {phase}-N")
+
+            # Always reset phases first (prevent leakage path)
+            self.modbus.write_coil(plc_slave, coils[r_coil], False)
+            self.modbus.write_coil(plc_slave, coils[y_coil], False)
+            self.modbus.write_coil(plc_slave, coils[b_coil], False)
+
+            time.sleep(0.05)
+
+            # Enable selected phase
+            print(f"[PCB{pcb_index}] Closing relay {coil_key}")
+            self.modbus.write_coil(plc_slave, coils[coil_key], True)
+
+            # Stabilization time for megger
+            time.sleep(STABILIZATION_TIME)
+
+            # Read impedance from correct meter
+            value = self.modbus.read_float(
+                slave,
+                imp["registers"][reg_key],
+                endian=endian
+            )
+
+            impedance_results[phase] = value
+            print(f"[PCB{pcb_index}] {phase}-N = {value:.3f} MΩ")
+
+            # OPEN PHASE AFTER EACH MEASUREMENT (IMPORTANT SAFETY)
+            self.modbus.write_coil(plc_slave, coils[coil_key], False)
+            time.sleep(0.05)
+
+        # -------------------------------------------------
+        # 4) IMMEDIATELY DISABLE HIGH VOLTAGE PATH
+        # -------------------------------------------------
+        print(f"\n[PCB{pcb_index}] Disabling impedance path")
+
+        self.modbus.write_coil(plc_slave, coils[test_en], False)
+        self.modbus.write_coil(plc_slave, coils[r_coil], False)
+        self.modbus.write_coil(plc_slave, coils[y_coil], False)
+        self.modbus.write_coil(plc_slave, coils[b_coil], False)
+        self.modbus.write_coil(plc_slave, coils[n_coil], False)
+
+        # -------------------------------------------------
+        # 5) VALIDATION
+        # -------------------------------------------------
+        all_pass = all(v > MIN_IMPEDANCE_MOHM for v in impedance_results.values())
+
+        result_text = (
+            f"Zrn={impedance_results['R']:.3f}MΩ, "
+            f"Zyn={impedance_results['Y']:.3f}MΩ, "
+            f"Zbn={impedance_results['B']:.3f}MΩ"
+        )
+
+        final_result = f"PASS ({result_text})" if all_pass else f"FAIL ({result_text})"
+
+        print(f"[PCB{pcb_index}] RESULT → {final_result}")
+
+        # Send result to UI & DB
+        self._finalize(tc, pcb_index, None, None, final_result,
+                       {"r_v": "NA", "y_v": "NA", "b_v": "NA"})
+
     def _fatal_comm_error(self, device, slave_name, exc):
         self._fatal_error = True
 
