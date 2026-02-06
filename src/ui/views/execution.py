@@ -28,6 +28,9 @@ class ExecutionView(QWidget):
         self.setup_icons()
         self.connect_signals()
 
+        # Default UI state
+        self._set_running_state(False)
+
         # Initial Setup
         self._load_com_ports()
         self.refresh_projects()
@@ -169,12 +172,27 @@ class ExecutionView(QWidget):
 
     def load_selected_project(self):
         project_name = self.cmb_projects.currentText()
-        if project_name.startswith("--") or project_name == self._loaded_project:
+        if project_name.startswith("--"):
             return
 
         logger.info(f"Loading project: {project_name}")
+        # ==============================
+        # 1️⃣ Reload test cases
+        # ==============================
         test_cases = load_test_cases(project_name)
         self.populate_results_table(test_cases)
+
+        # ==============================
+        # 2️⃣ Clear PCB serial fields
+        # ==============================
+        self.txt_pcb_serial_1.clear()
+        self.txt_pcb_serial_2.clear()
+
+        # ==============================
+        # 3️⃣ Reset runner reference
+        # ==============================
+        self.runner = None
+
         self._loaded_project = project_name
     # =========================================================================
 
@@ -202,15 +220,26 @@ class ExecutionView(QWidget):
                     table.setItem(row, col, item)
     # -------------------------------------------------
     def start_tests(self):
+        print("[EXEC] Start tests clicked")
+        logger.info("Start tests clicked")
+
+        if self.runner and self.runner.isRunning():
+            logger.warning("Start clicked while TestRunner already running")
+            return
+
         project_name = self.cmb_projects.currentText()
-        com_port     = self.cmb_comPort.currentText()
+        com_port = self.cmb_comPort.currentText()
 
         if project_name.startswith("--"):
+            logger.warning("Start aborted: project not selected")
             QMessageBox.warning(self, "Error", "Select project")
             return
+
         if com_port.startswith("--"):
+            logger.warning("Start aborted: COM port not selected")
             QMessageBox.warning(self, "Error", "Select COM port")
             return
+
         # =====================================================
         # AUTO READ BOTH PCB SERIAL NUMBERS
         # =====================================================
@@ -218,48 +247,58 @@ class ExecutionView(QWidget):
         sn2 = self._read_qr("QR_SCANNER_2", com_port)
 
         fail_msgs = []
-
         if not sn1:
             fail_msgs.append("PCB-1 QR Scanner failed")
-
         if not sn2:
             fail_msgs.append("PCB-2 QR Scanner failed")
 
         if fail_msgs:
+            logger.warning("QR read failed")
             QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs))
             return
 
         # Update UI
-        if sn1:
-            self.txt_pcb_serial_1.setText(sn1)
-        else:
-            self.txt_pcb_serial_1.setText("NO_READ")
-
-        if sn2:
-            self.txt_pcb_serial_2.setText(sn2)
-        else:
-            self.txt_pcb_serial_2.setText("NO_READ")
+        self.txt_pcb_serial_1.setText(sn1)
+        self.txt_pcb_serial_2.setText(sn2)
 
         pcb_serial_tuple = (sn1, sn2)
+
+        # =====================================================
+        # Determine Start Row (ONLY from Table 1)
+        # =====================================================
+        start_row = self.table_results_1.currentRow()
+
+        if (
+                start_row < 0 or
+                start_row == self.table_results_1.rowCount() - 1
+        ):
+            start_row = 0
+
+        logger.info(
+            f"Starting execution | Project={project_name}, "
+            f"COM={com_port}, StartRow={start_row}"
+        )
+
+        # =====================================================
+        # CLEAR BOTH TABLES FROM start_row
+        # =====================================================
+        self.clear_results_from_row(start_row)
+
+        # =====================================================
+        # LOAD TEST CASES
         # =====================================================
         test_cases = load_test_cases(project_name)
 
-        start_row = self.table_results_1.currentRow()
-        if start_row < 0: start_row = 0
-
-        self.clear_results_from_row(start_row)
-
-        # NOTE: TestRunner is currently Single-PCB.
-        # We will instantiate it, but in the future it needs to be updated to handle 2 PCBs.
-        # For this UI task, we will mirror the outputs to both tables to demonstrate the layout.
-
+        # =====================================================
+        # CREATE RUNNER
+        # =====================================================
         self.runner = TestRunner(
             project_name=project_name,
             pcb_serial=pcb_serial_tuple,
             test_cases=test_cases,
             com_port=com_port,
             start_index=start_row,
-            active_pcbs=(1, 2),  # 👈 BOTH DUTs
+            active_pcbs=(1, 2),
             run_single=False
         )
 
@@ -267,7 +306,11 @@ class ExecutionView(QWidget):
         self.runner.result_signal.connect(self.update_ui_row)
         self.runner.finished_signal.connect(self.on_tests_finished)
         self.runner.error_signal.connect(self.on_test_error)
+
+        self._set_running_state(True)
+
         self.runner.start()
+        logger.info("TestRunner thread started")
 
     # -------------------------------------------------
     def run_selected_test(self, table):
@@ -318,6 +361,7 @@ class ExecutionView(QWidget):
         self.runner.finished_signal.connect(self.on_tests_finished)
         self.runner.error_signal.connect(self.on_test_error)
 
+        self._set_running_state(True)
         self.runner.start()
 
     # -------------------------------------------------
@@ -332,7 +376,7 @@ class ExecutionView(QWidget):
             raw.close()
 
             serial = data.decode(errors="ignore").strip()
-            serial ="QR_CODE"
+            #serial ="QR_CODE"
 
             print(f"[QR] {qr['display_name']} → {serial}")
 
@@ -350,14 +394,58 @@ class ExecutionView(QWidget):
     def stop_tests(self):
         if self.runner:
             self.runner.stop()
+        self._set_running_state(False)
+
     # -------------------------------------------------
 
     def reset_table(self):
+
+        # Safety: do not allow reset while running
+        if self.runner and self.runner.isRunning():
+            QMessageBox.warning(self, "Warning", "Cannot reset while test is running.")
+            return
+
+        # ==============================
+        # 1️⃣ Reset UI tables
+        # ==============================
         for table in [self.table_results_1, self.table_results_2]:
-            if not table: continue
+            if not table:
+                continue
+
             for row in range(table.rowCount()):
                 for col in range(7, 13):
                     table.setItem(row, col, QTableWidgetItem(""))
+
+        # ==============================
+        # 2️⃣ Reset ALL PLC coils
+        # ==============================
+        try:
+            com_port = self.cmb_comPort.currentText()
+            if com_port.startswith("--"):
+                QMessageBox.warning(self, "Error", "Select COM port to reset PLC")
+                return
+
+            from src.core.drivers.modbus_driver import ModbusRTU
+
+            mb = ModbusRTU(port=com_port)
+
+            plc = SLAVE_DEVICES["PLC"]
+            slave_id = plc["slave_id"]
+
+            print("[RESET] Turning OFF all PLC coils")
+
+            for name, addr in plc["coils"].items():
+                mb.write_coil(slave_id, addr, False)
+
+            mb.close()
+
+            logger.info("All PLC coils reset successfully")
+            QMessageBox.information(self, "Done", "Tables and PLC relays reset.")
+
+        except Exception as e:
+            logger.error(f"PLC Reset failed: {e}")
+            QMessageBox.warning(self, "Error", f"PLC Reset failed:\n{e}")
+
     # -------------------------------------------------
 
     def clear_results_from_row(self, start_row):
@@ -421,7 +509,18 @@ class ExecutionView(QWidget):
                 t.scrollToItem(t.item(row, 0), QAbstractItemView.PositionAtCenter)
 
     # -------------------------------------------------
+    def _set_running_state(self, running: bool):
+        """
+        running = True  → test is running
+        running = False → test is stopped / finished
+        """
+
+        self.btn_start.setEnabled(not running)
+        self.btn_stop.setEnabled(running)
+        self.btn_reset.setEnabled(not running)
+
     def on_tests_finished(self, status):
+        self._set_running_state(False)
         if status == "success":
             print("[EXEC] All tests completed.")
             logger.info("All tests completed")

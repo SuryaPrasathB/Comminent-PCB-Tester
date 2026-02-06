@@ -309,7 +309,7 @@
      <item>
       <widget class="QPushButton" name="pushButton_reset">
        <property name="text">
-        <string>Reset Tables</string>
+        <string>Reset </string>
        </property>
        <property name="minimumSize">
         <size>

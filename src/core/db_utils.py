@@ -145,7 +145,7 @@ def create_tables():
                     expected_i VARCHAR(50),
                     measured_v VARCHAR(50),
                     measured_i VARCHAR(50),
-                    result VARCHAR(50),
+                    result VARCHAR(60),
                     tested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (project_name, pcb_serial, sn)
                 )

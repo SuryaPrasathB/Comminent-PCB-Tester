@@ -547,6 +547,7 @@ class ProjectConfigView(QWidget):
         if 0 <= r < self.table.rowCount() - 1:
             self._swap_rows(r, r + 1)
             self.table.setCurrentCell(r + 1, 0)
+        # -------------------------------------------------
 
     def _swap_rows(self, r1, r2):
         # Helper to get checkbox state from widget container
@@ -557,12 +558,15 @@ class ProjectConfigView(QWidget):
                 cb = widget.findChild(QCheckBox)
                 return cb.isChecked() if cb else False
             return False
-            
+
+        # -------------------------------------------------
+
         def set_checked(row, state):
             widget = self.table.cellWidget(row, 1)
             if widget:
                 cb = widget.findChild(QCheckBox)
                 if cb: cb.setChecked(state)
+        # -------------------------------------------------
 
         def read_row(row):
             return {
@@ -575,6 +579,8 @@ class ProjectConfigView(QWidget):
                 "v": self.table.item(row, 7).text(),
                 "i": self.table.item(row, 8).text(),
             }
+        # -------------------------------------------------
+
         def write_row(row, data):
             set_checked(row, data["enabled"])
             self.table.item(row, 2).setText(data["desc"])
@@ -590,24 +596,61 @@ class ProjectConfigView(QWidget):
         write_row(r1, d2)
         write_row(r2, d1)
         self._renumber_serials()
+        # -------------------------------------------------
 
     def load_selected_project(self):
         project_name = self.cmb_projects.currentText()
-        if project_name.startswith("--"): return
 
+        # =====================================================
+        # 🔁 If user selects default placeholder
+        # =====================================================
+        if project_name.startswith("--"):
+            logger.info("Loading default test cases (no saved project selected)")
+
+            self.txt_project.clear()
+            self.populate_test_table(default_test_cases)
+
+            # Reset diagram
+            self.current_diagram_svg = None
+            if hasattr(self, "svg_circuit"):
+                self.svg_circuit.clear()
+
+            return
+
+        # =====================================================
+        # 📦 Load saved project
+        # =====================================================
         self.txt_project.setText(project_name)
         saved_rows = load_project_rows(project_name)
 
-        # Merge logic (simplified port)
-        def _norm(val): return val.strip() if isinstance(val, str) else val
+        def _norm(val):
+            return val.strip() if isinstance(val, str) else val
+
         saved_map = {}
         for row in saved_rows:
-            key = (_norm(row["desc"]), _norm(row["r"]), _norm(row["y"]), _norm(row["b"]), _norm(row["n"]), _norm(row["v"]), _norm(row["i"]))
+            key = (
+                _norm(row["desc"]),
+                _norm(row["r"]),
+                _norm(row["y"]),
+                _norm(row["b"]),
+                _norm(row["n"]),
+                _norm(row["v"]),
+                _norm(row["i"]),
+            )
             saved_map[key] = row
 
         merged = []
         for tc in default_test_cases:
-            key = (_norm(tc["desc"]), _norm(tc["r"]), _norm(tc["y"]), _norm(tc["b"]), _norm(tc["n"]), _norm(tc["v"]), _norm(tc["i"]))
+            key = (
+                _norm(tc["desc"]),
+                _norm(tc["r"]),
+                _norm(tc["y"]),
+                _norm(tc["b"]),
+                _norm(tc["n"]),
+                _norm(tc["v"]),
+                _norm(tc["i"]),
+            )
+
             if key in saved_map:
                 row = saved_map[key]
                 merged.append({**tc, "enabled": row["enabled"]})
@@ -615,6 +658,8 @@ class ProjectConfigView(QWidget):
                 merged.append({**tc, "enabled": False})
 
         self.populate_test_table(merged)
+
+        # -------------------------------------------------
 
     def save_current_project(self):
         name = self.txt_project.text().strip()

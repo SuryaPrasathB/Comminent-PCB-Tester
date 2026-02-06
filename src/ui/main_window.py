@@ -211,6 +211,18 @@ class MainWindow(QMainWindow):
         if view:
             self.stack.setCurrentWidget(view)
 
+            # 🔥 Reload project when returning to Execution
+            if page_name == "execution":
+                try:
+                    print("[MAIN] Execution view activated → Reloading project")
+                    logger.info("Execution view activated → Reloading project")
+
+                    # Reload currently selected project
+                    view.load_selected_project()
+
+                except Exception as e:
+                    logger.warning(f"Execution reload failed: {e}")
+
         # Ensure buttons reflect selection visually (optional, if stylesheets handle it via 'checked' state)
         # The sidebar logic manages checkable buttons?
         # In .ui, buttons are autoExclusive=true. So clicking one unchecks others.

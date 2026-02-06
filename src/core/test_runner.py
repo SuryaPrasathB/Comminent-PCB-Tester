@@ -121,7 +121,18 @@ class TestRunner(QThread):
                     logger.info("MAINS OFF (final safety)")
 
                     self.modbus.write_coil( plc_slave,coils["MAIN_CONTACTOR"],False)
-                    time.sleep(0.1)
+                    time.sleep(0.5)
+
+                    # 2️⃣ Turn OFF all coils (including MAIN again — no issue)
+                    print("[PLC] FINAL SAFETY RESET → ALL COILS OFF")
+                    logger.info("FINAL SAFETY RESET → ALL COILS OFF")
+
+                    for name, addr in coils.items():
+                        try:
+                            self.modbus.write_coil(plc_slave, addr, False)
+                        except Exception as inner_e:
+                            logger.warning(f"Failed to reset coil {name}: {inner_e}")
+
 
                 except Exception as e:
                     logger.warning(f"Failed to turn MAINS OFF safely: {e}")
@@ -287,14 +298,24 @@ class TestRunner(QThread):
             # CURRENT TAPS
             # =================================================
             print("[PLC] Resetting ALL current relays")
-            for cur in CURRENT_TAPPINGS:
-                if cur != "0A":
-                    print(f"[PLC] RESET coil CUR1_{cur.replace('A', '').replace('.', '_')}")
-                    self.modbus.write_coil(plc_slave, coils[f"CUR1_{cur.replace('A', '').replace('.', '_')}"], False)
 
+            for pcb in (1, 2):
+                for cur in CURRENT_TAPPINGS:
+                    if cur != "0A":
+                        cur_key = cur.replace("A", "").replace(".", "_")
+                        coil_name = f"CUR{pcb}_{cur_key}"
+                        print(f"[PLC] RESET coil {coil_name}")
+                        self.modbus.write_coil(plc_slave, coils[coil_name], False)
+
+            # -------------------------------------------------
+            # Apply current only to active PCBs
             if tc["i"] != "0A":
-                print(f"[PLC] SET current tap CUR1_{tc['i'].replace('A', '').replace('.', '_')}")
-                self.modbus.write_coil(plc_slave, coils[f"CUR1_{tc['i'].replace('A', '').replace('.', '_')}"], True)
+                cur_key = tc["i"].replace("A", "").replace(".", "_")
+
+                for pcb in self.active_pcbs:
+                    coil_name = f"CUR{pcb}_{cur_key}"
+                    print(f"[PLC] SET current tap {coil_name}")
+                    self.modbus.write_coil(plc_slave, coils[coil_name], True)
             else:
                 print("[PLC] No current applied (0A selected)")
 
@@ -303,6 +324,20 @@ class TestRunner(QThread):
             time.sleep(STABILIZATION_TIME)
 
             self._task_ok("Setting Voltage and Current Relays")
+
+            # =================================================
+            # PCB 2 ENABLE RELAY
+            # =================================================
+            print("[PLC] Configuring PCB_2_EN relay")
+
+            pcb2_enabled = (2 in self.active_pcbs)
+
+            print(f"[PLC] WRITE coil PCB_2_EN = {pcb2_enabled}")
+            self.modbus.write_coil(
+                plc_slave,
+                coils["PCB_2_EN"],
+                pcb2_enabled
+            )
 
             # =================================================
             # MAINS ON (for non-impedance tests only)
@@ -387,31 +422,52 @@ class TestRunner(QThread):
             return
 
         # =================================================
-        # 4️⃣ READ DC METERS
+        # 4️⃣ READ DC METERS (PCB SPECIFIC)
         # =================================================
         self._sep()
+
         try:
             print("[TEST] Reading DC Voltage and Current")
             logger.info("Reading DC Voltage and Current")
 
-            dc_v = SLAVE_DEVICES["DC_V_METER_1"]
-            dc_v_endian = dc_v.get("endian", "ABCD")
-            present_slave_name =  dc_v.get("display_name")
-            measured_v = self.modbus.read_float(dc_v["slave_id"], dc_v["registers"]["DC_VOLTAGE"], endian=dc_v_endian)
+            dc_results = {}
 
-            dc_i = SLAVE_DEVICES["DC_I_METER_1"]
-            dc_i_endian = dc_i.get("endian", "ABCD")
-            present_slave_name =  dc_i.get("display_name")
-            measured_i = self.modbus.read_float(dc_i["slave_id"], dc_i["registers"]["DC_CURRENT"], endian=dc_i_endian)
+            for pcb in self.active_pcbs:
+                print(f"[TEST][PCB{pcb}] Reading DC meters")
 
-            print(f"[TEST] DC → V={measured_v:.3f}  I={measured_i:.3f}")
-            logger.info(f"DC Measurements → V={measured_v:.3f}, I={measured_i:.3f}")
+                # ----------------------------------------
+                # Select correct DC meters dynamically
+                # ----------------------------------------
+                dc_v_key = f"DC_V_METER_{pcb}"
+                dc_i_key = f"DC_I_METER_{pcb}"
+
+                dc_v = SLAVE_DEVICES[dc_v_key]
+                dc_i = SLAVE_DEVICES[dc_i_key]
+
+                # Voltage
+                measured_v = self.modbus.read_float(
+                    dc_v["slave_id"],
+                    dc_v["registers"]["DC_VOLTAGE"],
+                    endian=dc_v.get("endian", "ABCD")
+                )
+
+                # Current
+                measured_i = self.modbus.read_float(
+                    dc_i["slave_id"],
+                    dc_i["registers"]["DC_CURRENT"],
+                    endian=dc_i.get("endian", "ABCD")
+                )
+
+                print(f"[TEST][PCB{pcb}] DC → V={measured_v:.3f}  I={measured_i:.3f}")
+                logger.info(f"[PCB{pcb}] DC → V={measured_v:.3f}, I={measured_i:.3f}")
+
+                dc_results[pcb] = (measured_v, measured_i)
 
             self._task_ok("Reading DC Voltage and Current")
 
         except Exception as e:
             self._task_fail("Reading DC Voltage and Current", "DC_METER")
-            self._fatal_comm_error("DC_METER", present_slave_name, e)
+            self._fatal_comm_error("DC_METER", "-", e)
             return
 
         # =================================================
@@ -445,7 +501,8 @@ class TestRunner(QThread):
         logger.info(f"Test Result = {result}")
 
         for pcb in self.active_pcbs:
-            self._finalize(tc, pcb, measured_v, measured_i, result, ac_vals)
+            v_meas, i_meas = dc_results.get(pcb, (None, None))
+            self._finalize(tc, pcb, v_meas, i_meas, result, ac_vals)
 
     # -------------------------------------------------
     def _finalize(self, tc, pcb_index, v, i, result, ac_vals=None):
