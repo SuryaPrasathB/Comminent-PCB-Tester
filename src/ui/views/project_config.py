@@ -436,11 +436,12 @@ class ProjectConfigView(QWidget):
         # "R Tap", "Y Tap", "B Tap", "Neutral", "Exp V", "Exp I" (indices 3-8)
         # Resize to contents to keep them compact and centered
         for i in range(3, 9):
-            header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(i, QHeaderView.Interactive)
+            header.resizeSection(i, 100)
 
     def setup_icons(self):
-        IconHelper.apply_icon(self.btn_save, "save", "white")
-        IconHelper.apply_icon(self.btn_delete, "delete", "white")
+        IconHelper.apply_icon(self.btn_save, "save", "black")
+        IconHelper.apply_icon(self.btn_delete, "delete", "black")
         IconHelper.apply_icon(self.btn_up, "arrow_up")
         IconHelper.apply_icon(self.btn_down, "arrow_down")
 
@@ -512,12 +513,17 @@ class ProjectConfigView(QWidget):
         combo.setCurrentText(current)
         combo.currentTextChanged.connect(self.on_combo_changed)
         
+        # Center the text
+        combo.setEditable(True)
+        combo.lineEdit().setReadOnly(True)
+        combo.lineEdit().setAlignment(Qt.AlignCenter)
+        combo.lineEdit().setAttribute(Qt.WA_TransparentForMouseEvents)
+        
         # Apply stylesheet to hide arrow when not active/hovered, but make it accessible
         # User request: "dont display the combo box arrows, when that particular cell is clean, open combo box."
         combo.setStyleSheet("""
             QComboBox {
                 border: none;
-                padding-left: 10px;
             }
             QComboBox::drop-down {
                 border: none;
@@ -727,7 +733,6 @@ class ProjectConfigView(QWidget):
                     widget.setStyleSheet(f"""
                         QComboBox {{
                             border: none;
-                            padding-left: 10px;
                             background-color: {bg};
                             color: {color};
                             font-weight: {font_weight};

@@ -2,7 +2,7 @@ import os
 import sys
 from PySide6.QtWidgets import QMainWindow, QWidget, QStackedWidget, QLabel, QPushButton, QPlainTextEdit, QMessageBox, QApplication, QSizePolicy
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, Qt, QEasingCurve, QPropertyAnimation
+from PySide6.QtCore import QFile, QIODevice, Qt, QEasingCurve, QPropertyAnimation, QEvent
 from PySide6.QtGui import QIcon, QPixmap
 
 from src.ui.icons import IconHelper
@@ -129,6 +129,20 @@ class MainWindow(QMainWindow):
         if self.role.lower() != "admin":
             if self.btn_settings: self.btn_settings.setVisible(False)
             if self.btn_debug: self.btn_debug.setVisible(False)
+
+        # Smart Sidebar Setup
+        if self.btn_toggle_sidebar:
+            self.btn_toggle_sidebar.setVisible(False)
+        
+        if self.widget_sidebar:
+            self.widget_sidebar.installEventFilter(self)
+            # Initial collapsed state
+            self.widget_sidebar.setMinimumWidth(50)
+            self.widget_sidebar.setMaximumWidth(50)
+            if self.label_logo_text:
+                self.label_logo_text.setVisible(False)
+            for btn in self.sidebar_buttons:
+                if btn: btn.setText("")
     # -------------------------------------------------
 
     def setup_icons(self):
@@ -151,7 +165,7 @@ class MainWindow(QMainWindow):
         self.btn_settings.clicked.connect(lambda: self.navigate("settings"))
 
         self.btn_logout.clicked.connect(self.on_logout)
-        self.btn_toggle_sidebar.clicked.connect(self.toggle_sidebar)
+        # self.btn_toggle_sidebar.clicked.connect(self.toggle_sidebar) # Removed: Smart sidebar
 
         # Initialize Views storage
         self.views = {}
@@ -241,44 +255,65 @@ class MainWindow(QMainWindow):
             btn_map[page_name].setChecked(True)
     # -------------------------------------------------
 
-    def toggle_sidebar(self):
-        width = self.widget_sidebar.width()
+    def eventFilter(self, source, event):
+        if source == self.widget_sidebar:
+            if event.type() == QEvent.Enter:
+                self.expand_sidebar()
+            elif event.type() == QEvent.Leave:
+                self.collapse_sidebar()
+        return super().eventFilter(source, event)
 
-        # Target width: Collapsed=50, Expanded=250
-        target = 50 if width > 100 else 250
+    def expand_sidebar(self):
+        self._set_sidebar_state(expanded=True)
+
+    def collapse_sidebar(self):
+        self._set_sidebar_state(expanded=False)
+
+    def _set_sidebar_state(self, expanded):
+        target_width = 250 if expanded else 50
+        current_width = self.widget_sidebar.width()
+        
+        # Stop existing animations
+        if hasattr(self, 'animation') and self.animation.state() == QPropertyAnimation.Running:
+            self.animation.stop()
+        if hasattr(self, 'anim2') and self.anim2.state() == QPropertyAnimation.Running:
+            self.anim2.stop()
+            
+        # Refetch width in case it changed mid-animation
+        current_width = self.widget_sidebar.width()
+
+        if current_width == target_width:
+            self._update_sidebar_text(expanded)
+            return
 
         self.animation = QPropertyAnimation(self.widget_sidebar, b"minimumWidth")
         self.animation.setDuration(300)
-        self.animation.setStartValue(width)
-        self.animation.setEndValue(target)
+        self.animation.setStartValue(current_width)
+        self.animation.setEndValue(target_width)
         self.animation.setEasingCurve(QEasingCurve.InOutQuart)
-        self.animation.start()
-
-        # We also animate maximumWidth to force the resize
+        
         self.anim2 = QPropertyAnimation(self.widget_sidebar, b"maximumWidth")
         self.anim2.setDuration(300)
-        self.anim2.setStartValue(width)
-        self.anim2.setEndValue(target)
+        self.anim2.setStartValue(current_width)
+        self.anim2.setEndValue(target_width)
         self.anim2.setEasingCurve(QEasingCurve.InOutQuart)
+
+        self.animation.start()
         self.anim2.start()
+        
+        self._update_sidebar_text(expanded)
 
-        # Toggle Text Visibility
-        is_expanding = target > 100
-
+    def _update_sidebar_text(self, expanded):
         # Logo Text
         if self.label_logo_text:
-            self.label_logo_text.setVisible(is_expanding)
-
-        # Keep Logo Icon Always Visible (handled by layout)
+            self.label_logo_text.setVisible(expanded)
 
         # Toggle Button Text
         for btn in self.sidebar_buttons:
             if not btn: continue
-            if not is_expanding:
-                # Collapsing: Hide text
+            if not expanded:
                 btn.setText("")
             else:
-                # Expanding: Restore text
                 original = btn.property("original_text")
                 if original is not None:
                     btn.setText(original)
