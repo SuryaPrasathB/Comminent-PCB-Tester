@@ -25,7 +25,7 @@ logger.info("SERIAL_SETTINGS loaded")
 
 NEUTRAL_OPTIONS  = ["NC", "C"]
 #VOLTAGE_TAPPINGS = ["NC", "138V", "144V", "240V", "265V", "500V", "510V", "520V", "530V"]
-VOLTAGE_TAPPINGS = ["530V", "520V", "510V", "500V", "265V", "240V", "144V", "138V", "NC"]
+VOLTAGE_TAPPINGS = ["530V", "520V", "510V", "500V", "460V", "240V", "144V", "138V", "NC"]
 CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
 
 VLL_TO_TAP = {
@@ -33,6 +33,7 @@ VLL_TO_TAP = {
     "520V": "300",
     "510V": "295",
     "500V": "288",
+    "460V": "265",
     "240V": "138",
 }
 
@@ -419,10 +420,14 @@ default_test_cases = [
     {"sn": 31, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0.5A"},
     {"sn": 32, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "1.25A"},
     {"sn": 33, "desc": "Working under voltage variations", "r": "288V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "2.5A"},
-    {"sn": 34, "desc": "Working at higher voltage condition", "r": "500V", "y": "500V", "b": "500V", "n": "NC",  "v": "0V", "i": "1.25A"},
-    {"sn": 35, "desc": "Working at higher voltage condition", "r": "510V", "y": "510V", "b": "510V", "n": "NC",  "v": "0V", "i": "1.25A"},
-    {"sn": 36, "desc": "Working at higher voltage condition", "r": "520V", "y": "520V", "b": "520V", "n": "NC",  "v": "0V", "i": "1.25A"},
-    {"sn": 37, "desc": "Working at higher voltage condition", "r": "530V", "y": "530V", "b": "530V", "n": "NC",  "v": "0V", "i": "1.25A"},
+    {"sn": 34, "desc": "Working at higher voltage condition", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
+    {"sn": 35, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V",  "i": "1.25A"},
+    {"sn": 36, "desc": "Working at higher voltage condition", "r": "510V", "y": "510V", "b": "510V", "n": "NC", "v": "0V", "i": "0A"},
+    {"sn": 37, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V", "i": "1.25A"},
+    {"sn": 38, "desc": "Working at higher voltage condition", "r": "520V", "y": "520V", "b": "520V", "n": "NC", "v": "0V", "i": "0A"},
+    {"sn": 39, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
+    {"sn": 40, "desc": "Working at higher voltage condition", "r": "530V", "y": "530V", "b": "530V", "n": "NC", "v": "0V", "i": "0A"},
+    {"sn": 41, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
 
 ]
 
