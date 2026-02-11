@@ -483,8 +483,18 @@ class TestRunner(QThread):
             print(f"[TEST] expected_v: {expected_v}")
             print(f"[TEST] expected_i: {expected_i}")
 
-            voltage_error = ((expected_v - measured_v) / expected_v) * 100
-            current_error = ((expected_i - measured_i) / expected_i) * 100
+            print(f"[TEST] measured_v: {measured_v}")
+            print(f"[TEST] measured_i: {measured_i}")
+
+            if expected_v != 0:
+                voltage_error = ((expected_v - measured_v) / expected_v) * 100
+            else:
+                voltage_error = measured_v
+
+            if expected_i != 0:
+                current_error = ((expected_i - measured_i) / expected_i) * 100
+            else:
+                current_error = measured_i
 
             print(f"[TEST] voltage_error: {voltage_error}")
             print(f"[TEST] current_error: {current_error}")
