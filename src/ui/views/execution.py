@@ -241,6 +241,14 @@ class ExecutionView(QWidget):
             return
 
         # =====================================================
+        # SAFETY PRE-CHECK
+        # =====================================================
+        safety_err = self.check_safety_pre_start(com_port)
+        if safety_err:
+            self.show_safety_popup(safety_err)
+            return
+
+        # =====================================================
         # AUTO READ BOTH PCB SERIAL NUMBERS
         # =====================================================
         sn1 = self._read_qr("QR_SCANNER_1", com_port)
@@ -306,6 +314,7 @@ class ExecutionView(QWidget):
         self.runner.result_signal.connect(self.update_ui_row)
         self.runner.finished_signal.connect(self.on_tests_finished)
         self.runner.error_signal.connect(self.on_test_error)
+        self.runner.safety_stop_signal.connect(self.show_safety_popup)
 
         self._set_running_state(True)
 
@@ -323,6 +332,12 @@ class ExecutionView(QWidget):
 
         if com_port.startswith("--"):
             QMessageBox.warning(self, "Error", "Select COM port")
+            return
+
+        # SAFETY PRE-CHECK
+        safety_err = self.check_safety_pre_start(com_port)
+        if safety_err:
+            self.show_safety_popup(safety_err)
             return
 
         pcb_serial = self.txt_pcb_serial_1.text().strip() or "SINGLE_RUN"
@@ -360,6 +375,7 @@ class ExecutionView(QWidget):
 
         self.runner.finished_signal.connect(self.on_tests_finished)
         self.runner.error_signal.connect(self.on_test_error)
+        self.runner.safety_stop_signal.connect(self.show_safety_popup)
 
         self._set_running_state(True)
         self.runner.start()
@@ -537,3 +553,42 @@ class ExecutionView(QWidget):
     # -------------------------------------------------
     def on_test_error(self, msg):
         QMessageBox.critical(self, "Error", msg)
+
+    # -------------------------------------------------
+    def check_safety_pre_start(self, com_port):
+        mb = None
+        try:
+            print(f"[SAFETY] Pre-check on {com_port}")
+            from src.core.drivers.modbus_driver import ModbusRTU
+            
+            # Temporary connection
+            mb = ModbusRTU(port=com_port)
+            plc = SLAVE_DEVICES["PLC"]
+            slave = plc["slave_id"]
+            
+            # Check E-Stop
+            estop = mb.read_coils(slave, plc["coils"]["EMERGENCY_STOP"], 1)
+            if estop and estop[0]:
+                return "Emergency Stop Active"
+                
+            # Check Curtain
+            curtain = mb.read_coils(slave, plc["coils"]["CURTAIN_SENSOR"], 1)
+            if curtain and curtain[0]:
+                return "Curtain Sensor Active"
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Safety pre-check failed: {e}")
+            return f"Safety Check Error: {e}"
+        finally:
+            if mb:
+                mb.close()
+
+    def show_safety_popup(self, reason):
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("Safety Alert")
+        msg.setText(f"Operation Stopped!\n\nReason: {reason}")
+        msg.setStandardButtons(QMessageBox.Close)
+        msg.exec()

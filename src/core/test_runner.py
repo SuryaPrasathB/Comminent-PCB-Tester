@@ -1,11 +1,13 @@
 # test_runner.py
 import math
+import threading
+import time
 
 from PySide6.QtCore import QThread, Signal
-import time
 
 from src.core.db_utils import save_test_result
 from src.core.drivers.modbus_driver import ModbusRTU
+from src.core.safety_monitor import SafetyMonitor
 
 from src.core.config import (
     SLAVE_DEVICES,
@@ -21,6 +23,7 @@ class TestRunner(QThread):
     finished_signal = Signal(str)
     error_signal = Signal(str)
     running_sn_signal = Signal(int)
+    safety_stop_signal = Signal(str)
 
     def __init__(
             self,
@@ -45,6 +48,8 @@ class TestRunner(QThread):
         self._stop_requested = False
         self._fatal_error = False
         self.modbus = None
+        self.safety_monitor = None
+        self.safety_stop_event = None
 
         print("[TEST] ====================================")
         print("[TEST] TestRunner initialized")
@@ -90,6 +95,18 @@ class TestRunner(QThread):
 
             self.modbus = ModbusRTU(port=self.com_port)
 
+            # -------------------------------------------------
+            # START SAFETY MONITOR
+            # -------------------------------------------------
+            self.safety_stop_event = threading.Event()
+            self.safety_monitor = SafetyMonitor(
+                self.modbus,
+                self.safety_stop_event,
+                self._safety_callback
+            )
+            self.safety_monitor.start()
+            logger.info("SafetyMonitor started within TestRunner")
+
             plc = SLAVE_DEVICES["PLC"]
             plc_slave = plc["slave_id"]
             coils = plc["coils"]
@@ -110,6 +127,12 @@ class TestRunner(QThread):
             self._fatal_comm_error("Modbus", "-", e)
 
         finally:
+            # STOP SAFETY MONITOR
+            if self.safety_stop_event:
+                self.safety_stop_event.set()
+            if self.safety_monitor:
+                self.safety_monitor.join()
+
             # SAFETY: FORCE MAINS OFF (always)
             if self.modbus:
                 try:
@@ -727,3 +750,9 @@ class TestRunner(QThread):
         self.error_signal.emit(
             f"Fatal error\nDevice: {device}\nSlave: {slave_name}\n{exc}"
         )
+
+    def _safety_callback(self, reason):
+        print(f"[SAFETY] STOP TRIGGERED: {reason}")
+        logger.warning(f"Safety Stop Triggered: {reason}")
+        self._stop_requested = True
+        self.safety_stop_signal.emit(reason)

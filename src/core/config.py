@@ -13,7 +13,7 @@ from src.core.logger import logger
 # =====================================================
 
 SERIAL_SETTINGS = {
-    "baudrate": 115200,  # CHANGE if required
+    "baudrate": 9600,  # CHANGE if required
     "parity": "N",  # 'N', 'E', 'O'
     "stopbits": 1,
     "bytesize": 8,
@@ -202,6 +202,11 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
     # Alarm
     coils["ALARM"] = addr
     addr += 1
+
+    # =======================================================
+    # Safety Inputs (Fixed Addresses)
+    coils["EMERGENCY_STOP"] = 104
+    coils["CURTAIN_SENSOR"] = 103
 
     # =======================================================
     # PRINT SUMMARY
