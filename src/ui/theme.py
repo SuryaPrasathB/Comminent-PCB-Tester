@@ -85,6 +85,16 @@ class AppTheme:
                 border: 1px solid %PRIMARY%;
             }
 
+            /* Fix: Force dropdown list to use theme colors instead of OS default */
+            QComboBox QAbstractItemView {
+                background-color: %SURFACE%;
+                color: %TEXT%;
+                selection-background-color: %PRIMARY%;
+                selection-color: white;
+                border: 1px solid %BORDER%;
+                outline: none;
+            }
+
             /* Buttons */
             QPushButton {
                 background-color: %SURFACE%;
