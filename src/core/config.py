@@ -13,7 +13,7 @@ from src.core.logger import logger
 # =====================================================
 
 SERIAL_SETTINGS = {
-    "baudrate": 9600,  # CHANGE if required
+    "baudrate": 115200,  # CHANGE if required
     "parity": "N",  # 'N', 'E', 'O'
     "stopbits": 1,
     "bytesize": 8,
@@ -204,7 +204,11 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
     addr += 1
 
     # =======================================================
+    # Start Input
+    coils["START"] = 101
+
     # Safety Inputs (Fixed Addresses)
+    coils["PCB"] = 102
     coils["EMERGENCY_STOP"] = 104
     coils["CURTAIN_SENSOR"] = 103
 
@@ -232,7 +236,7 @@ SLAVE_DEVICES = {
     },
 
     "QR_SCANNER_2": {
-        "read_cmd": "025404",  # in Hex
+        "read_c md": "025404",  # in Hex
         "display_name": "QR_Code_Scanner_2"
     },
 

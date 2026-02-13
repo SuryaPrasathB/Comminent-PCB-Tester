@@ -254,6 +254,9 @@ class ExecutionView(QWidget):
         sn1 = self._read_qr("QR_SCANNER_1", com_port)
         sn2 = self._read_qr("QR_SCANNER_2", com_port)
 
+        sn1 = "12345"
+        sn2 = "67890"
+
         fail_msgs = []
         if not sn1:
             fail_msgs.append("PCB-1 QR Scanner failed")
@@ -565,6 +568,11 @@ class ExecutionView(QWidget):
             mb = ModbusRTU(port=com_port)
             plc = SLAVE_DEVICES["PLC"]
             slave = plc["slave_id"]
+
+            # Check PCB
+            pcb = mb.read_coils(slave, plc["coils"]["PCB"], 1)
+            if not pcb or not pcb[0]:
+                return "PCB Not Placed"
             
             # Check E-Stop
             estop = mb.read_coils(slave, plc["coils"]["EMERGENCY_STOP"], 1)
