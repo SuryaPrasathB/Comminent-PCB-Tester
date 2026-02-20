@@ -410,6 +410,9 @@ class ExecutionView(QWidget):
             QMessageBox.warning(self, "Error", "Select COM port")
             return
 
+        # Stop polling before starting any test
+        self._stop_polling()
+
         # SAFETY PRE-CHECK
         safety_err = self.check_safety_pre_start(com_port)
         if safety_err:
@@ -699,8 +702,6 @@ class ExecutionView(QWidget):
             self.lbl_waiting.setStyleSheet(STYLE_HIDDEN)
 
     def _start_polling(self):
-        return # Disabled for now
-        
         # If STOP button is enabled, it means a test is running.
         if self.btn_stop.isEnabled(): 
             return
