@@ -314,6 +314,19 @@
            </property>
           </spacer>
          </item>
+          <item>
+           <widget class="QLabel" name="label_waiting_status">
+            <property name="styleSheet">
+             <string notr="true">font-size: 14pt; font-weight: bold; color: #0078d7; margin-right: 20px;</string>
+            </property>
+            <property name="text">
+             <string>Waiting for Start...</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
          <item>
           <widget class="QLabel" name="label_user_info">
            <property name="styleSheet">

@@ -13,14 +13,17 @@ class RawSerial:
     Serial parameters are taken ONLY from config.py
     """
 
-    def __init__(self, port: str):
+    def __init__(self, port: str, baudrate: int = None):
         logger.info(f"Initializing RawSerial | port={port}")
 
         print(f"[RAW] Opening RAW serial port: {port}")
 
+        # Use provided baudrate or fall back to config
+        effective_baud = baudrate if baudrate else SERIAL_SETTINGS["baudrate"]
+
         self.ser = serial.Serial(
             port=port,
-            baudrate=SERIAL_SETTINGS["baudrate"],
+            baudrate=effective_baud,
             bytesize=SERIAL_SETTINGS["bytesize"],
             parity=SERIAL_SETTINGS["parity"],
             stopbits=SERIAL_SETTINGS["stopbits"],
@@ -34,14 +37,14 @@ class RawSerial:
 
         print(
             "[RAW] RAW serial opened "
-            f"(baud={SERIAL_SETTINGS['baudrate']}, "
+            f"(baud={effective_baud}, "
             f"parity={SERIAL_SETTINGS['parity']}, "
             f"stopbits={SERIAL_SETTINGS['stopbits']})"
         )
 
         logger.info(
             f"RAW serial opened | port={port}, "
-            f"baud={SERIAL_SETTINGS['baudrate']}, "
+            f"baud={effective_baud}, "
             f"parity={SERIAL_SETTINGS['parity']}, "
             f"stopbits={SERIAL_SETTINGS['stopbits']}"
         )

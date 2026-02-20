@@ -13,7 +13,7 @@ from src.core.logger import logger
 # =====================================================
 
 SERIAL_SETTINGS = {
-    "baudrate": 115200,  # CHANGE if required
+    "baudrate": 9600,  # CHANGE if required
     "parity": "N",  # 'N', 'E', 'O'
     "stopbits": 1,
     "bytesize": 8,
@@ -205,7 +205,7 @@ def generate_plc_coils(voltage_tappings, current_tappings, start_addr=1):
 
     # =======================================================
     # Start Input
-    coils["START"] = 101
+    coils["START"] = 35
 
     # Safety Inputs (Fixed Addresses)
     coils["PCB"] = 102
@@ -236,7 +236,7 @@ SLAVE_DEVICES = {
     },
 
     "QR_SCANNER_2": {
-        "read_c md": "025404",  # in Hex
+        "read_cmd": "025404",  # in Hex
         "display_name": "QR_Code_Scanner_2"
     },
 
@@ -397,6 +397,7 @@ logger.info(f"Database configuration loaded | DB={DB_CONFIG['database']}")
 # === Default Test Cases (33 conditions in the requested format) ===
 default_test_cases = [
     {"sn": 1, "desc": "Impedance test b/w R-N, Y-N, B-N)", "r": "NC", "y": "NC", "b": "NC", "n": "NC", "v": "NA",  "i": "NA"},
+    
     {"sn": 2, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",  "i": "0A"},
     {"sn": 3, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",  "i": "0.5A"},
     {"sn": 4, "desc": "All 3 Phase input applied", "r": "240V", "y": "240V", "b": "240V", "n": "C", "v": "5V",  "i": "1.25A"},
@@ -417,34 +418,59 @@ default_test_cases = [
     {"sn": 19, "desc": "Working on any 2 wires", "r": "240V", "y": "240V", "b": "NC", "n": "NC", "v": "5V",  "i": "2.5A"},
     {"sn": 20, "desc": "Working on any 2 wires", "r": "NC", "y": "240V", "b": "240V", "n": "NC", "v": "5V",  "i": "2.5A"},
     {"sn": 21, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "240V", "n": "NC", "v": "5V",  "i": "2.5A"},
+
     {"sn": 22, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "0A"},
     {"sn": 23, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "0.5A"},
     {"sn": 24, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "1.25A"},
     {"sn": 25, "desc": "Working on any 2 wires", "r": "240V", "y": "NC", "b": "NC", "n": "C", "v": "5V", "i": "2.5A"},
-    {"sn": 26, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "0A"},
-    {"sn": 27, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "0.5A"},
-    {"sn": 28, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "1.25A"},
-    {"sn": 29, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "2.5A"},
-    {"sn": 30, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
-    {"sn": 31, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
-    {"sn": 32, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
-    {"sn": 33, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
-    {"sn": 34, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0A"},
-    {"sn": 35, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0.5A"},
-    {"sn": 36, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "1.25A"},
-    {"sn": 37, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "2.5A"},
-    {"sn": 38, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "0A"},
-    {"sn": 39, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "0.5A"},
-    {"sn": 40, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "1.25A"},
-    {"sn": 41, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "2.5A"},
-    {"sn": 42, "desc": "Working at higher voltage condition", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
-    {"sn": 43, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V",  "i": "1.25A"},
-    {"sn": 44, "desc": "Working at higher voltage condition", "r": "510V", "y": "510V", "b": "510V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 45, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V", "i": "1.25A"},
-    {"sn": 46, "desc": "Working at higher voltage condition", "r": "520V", "y": "520V", "b": "520V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 47, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
-    {"sn": 48, "desc": "Working at higher voltage condition", "r": "530V", "y": "530V", "b": "530V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 49, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
+
+    {"sn": 26, "desc": "Working on any 2 wires", "r": "NC", "y": "240V", "b": "NC", "n": "C", "v": "5V", "i": "0A"},
+    {"sn": 27, "desc": "Working on any 2 wires", "r": "NC", "y": "240V", "b": "NC", "n": "C", "v": "5V", "i": "0.5A"},
+    {"sn": 28, "desc": "Working on any 2 wires", "r": "NC", "y": "240V", "b": "NC", "n": "C", "v": "5V", "i": "1.25A"},
+    {"sn": 29, "desc": "Working on any 2 wires", "r": "NC", "y": "240V", "b": "NC", "n": "C", "v": "5V", "i": "2.5A"},
+
+    {"sn": 30, "desc": "Working on any 2 wires", "r": "NC", "y": "NC", "b": "240V", "n": "C", "v": "5V", "i": "0A"},
+    {"sn": 31, "desc": "Working on any 2 wires", "r": "NC", "y": "NC", "b": "240V", "n": "C", "v": "5V", "i": "0.5A"},
+    {"sn": 32, "desc": "Working on any 2 wires", "r": "NC", "y": "NC", "b": "240V", "n": "C", "v": "5V", "i": "1.25A"},
+    {"sn": 33, "desc": "Working on any 2 wires", "r": "NC", "y": "NC", "b": "240V", "n": "C", "v": "5V", "i": "2.5A"},
+
+    {"sn": 34, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 35, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 36, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 37, "desc": "Working under voltage variations", "r": "144V", "y": "144V", "b": "144V", "n": "C", "v": "5V",  "i": "2.5A"},
+    {"sn": 38, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
+    {"sn": 39, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
+    {"sn": 40, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
+    {"sn": 41, "desc": "Working under voltage variations", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
+    
+    {"sn": 42, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 43, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 44, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 45, "desc": "Working under voltage variations", "r": "144V", "y": "NC", "b": "NC", "n": "C", "v": "5V",  "i": "2.5A"},
+
+    {"sn": 46, "desc": "Working under voltage variations", "r": "NC", "y": "144V", "b": "NC", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 47, "desc": "Working under voltage variations", "r": "NC", "y": "144V", "b": "NC", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 48, "desc": "Working under voltage variations", "r": "NC", "y": "144V", "b": "NC", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 49, "desc": "Working under voltage variations", "r": "NC", "y": "144V", "b": "NC", "n": "C", "v": "5V",  "i": "2.5A"},
+
+    {"sn": 50, "desc": "Working under voltage variations", "r": "NC", "y": "NC", "b": "144V", "n": "C", "v": "5V",  "i": "0A"},
+    {"sn": 51, "desc": "Working under voltage variations", "r": "NC", "y": "NC", "b": "144V", "n": "C", "v": "5V",  "i": "0.5A"},
+    {"sn": 52, "desc": "Working under voltage variations", "r": "NC", "y": "NC", "b": "144V", "n": "C", "v": "5V",  "i": "1.25A"},
+    {"sn": 53, "desc": "Working under voltage variations", "r": "NC", "y": "NC", "b": "144V", "n": "C", "v": "5V",  "i": "2.5A"},
+
+    {"sn": 54, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "0A"},
+    {"sn": 55, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "0.5A"},
+    {"sn": 56, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "1.25A"},
+    {"sn": 57, "desc": "Working under voltage variations", "r": "500V", "y": "NC", "b": "NC", "n": "NC", "v": "5V",  "i": "2.5A"},
+    
+    {"sn": 58, "desc": "Working at higher voltage condition", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
+    {"sn": 59, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V",  "i": "1.25A"},
+    {"sn": 60, "desc": "Working at higher voltage condition", "r": "510V", "y": "510V", "b": "510V", "n": "NC", "v": "0V", "i": "0A"},
+    {"sn": 61, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V", "i": "1.25A"},
+    {"sn": 62, "desc": "Working at higher voltage condition", "r": "520V", "y": "520V", "b": "520V", "n": "NC", "v": "0V", "i": "0A"},
+    {"sn": 63, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
+    {"sn": 64, "desc": "Working at higher voltage condition", "r": "530V", "y": "530V", "b": "530V", "n": "NC", "v": "0V", "i": "0A"},
+    {"sn": 65, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
 
 ]
 

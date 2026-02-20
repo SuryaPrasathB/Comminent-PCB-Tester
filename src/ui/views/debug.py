@@ -523,16 +523,19 @@ class DebugView(QWidget):
 
     # -------------------------------------------------
     def read_qr_code(self, scanner_name, field):
+        raw = None
         try:
             com = self.cmb_com.currentText()
             if com.startswith("--"): return
             qr = SLAVE_DEVICES[scanner_name]
-            raw = RawSerial(port=com)
+            raw = RawSerial(port=com, baudrate=115200)
             rx = raw.write_read(qr["read_cmd"])
-            raw.close()
             field.setText(rx.decode(errors="ignore").strip())
         except Exception as e:
             logger.error(f"QR Error ({scanner_name}): {e}")
+        finally:
+            if raw:
+                raw.close()
 
     # -------------------------------------------------
     def read_modbus(self, key, field):

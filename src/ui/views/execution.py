@@ -1,9 +1,10 @@
 import os
+import time
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QVBoxLayout, QHeaderView
 )
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, QEvent, Qt
+from PySide6.QtCore import QFile, QIODevice, QEvent, Qt, QTimer, QThread, Signal
 
 from serial.tools import list_ports
 
@@ -15,6 +16,65 @@ from src.core.config import SLAVE_DEVICES
 from src.core.logger import logger
 from src.ui.icons import IconHelper
 
+
+class StartPoller(QThread):
+    start_signal = Signal()
+
+    def __init__(self, port, slave_id, coil_addr):
+        super().__init__()
+        self.port = port
+        self.slave_id = slave_id
+        self.coil_addr = coil_addr
+        self.running = True
+        self.client = None
+
+    def run(self):
+        try:
+            from src.core.drivers.modbus_driver import ModbusRTU
+            # Reduced timeout for responsiveness
+            self.client = ModbusRTU(self.port, timeout=0.5)
+            
+            while self.running:
+                try:
+                    # check if running became False during sleep
+                    if not self.running:
+                        break
+
+                    coils = self.client.read_coils(self.slave_id, self.coil_addr, 1)
+                    
+                    if coils and coils[0] is True:
+                        if not self.running: break
+                        self.start_signal.emit()
+                        self.running = False
+                        break
+
+                except Exception:
+                    pass
+
+                self.msleep(100)
+
+            self.client.close()
+            
+        except Exception as e:
+            logger.error(f"StartPoller failed: {e}")
+        finally:
+            if self.client:
+                try:
+                    self.client.close()
+                except:
+                    pass
+
+    def stop(self):
+        self.running = False
+        # Optimize stop: Force Close to interrupt any blocking read
+        if self.client:
+            try:
+                if hasattr(self.client, 'client'):
+                    self.client.client.close()
+            except:
+                pass
+        self.wait()
+
 class ExecutionView(QWidget):
     def __init__(self, parent_stack=None):
         super().__init__()
@@ -22,7 +82,11 @@ class ExecutionView(QWidget):
 
         logger.info("Initializing New ExecutionView (Dual PCB)")
         self.runner = None
+        self.poller = None
         self._loaded_project = None
+        
+        self.blink_timer = QTimer(self)
+        self.blink_timer.timeout.connect(self._blink_label)
 
         self.load_ui()
         self.setup_icons()
@@ -34,6 +98,7 @@ class ExecutionView(QWidget):
         # Initial Setup
         self._load_com_ports()
         self.refresh_projects()
+
     # =========================================================================
     def load_ui(self):
         loader = QUiLoader()
@@ -73,7 +138,11 @@ class ExecutionView(QWidget):
         self.btn_run_selected_1 = self.findChild(QWidget, "pushButton_runSelected_1")
         self.btn_run_selected_2 = self.findChild(QWidget, "pushButton_runSelected_2")
 
+        self.lbl_waiting = None
+
+
         # runOne removed from UI
+
 
         # Configure Both Tables
         self.configure_table(self.table_results_1)
@@ -138,6 +207,9 @@ class ExecutionView(QWidget):
             lambda: self.run_selected_test(self.table_results_1))
         self.btn_run_selected_2.clicked.connect(
             lambda: self.run_selected_test(self.table_results_2))
+        
+        self.cmb_comPort.currentIndexChanged.connect(self._on_com_port_changed)
+
 
     # =========================================================================
     # LOGIC
@@ -240,7 +312,11 @@ class ExecutionView(QWidget):
             QMessageBox.warning(self, "Error", "Select COM port")
             return
 
+        # Stop polling before starting any test
+        self._stop_polling()
+
         # =====================================================
+
         # SAFETY PRE-CHECK
         # =====================================================
         safety_err = self.check_safety_pre_start(com_port)
@@ -253,9 +329,6 @@ class ExecutionView(QWidget):
         # =====================================================
         sn1 = self._read_qr("QR_SCANNER_1", com_port)
         sn2 = self._read_qr("QR_SCANNER_2", com_port)
-
-        sn1 = "12345"
-        sn2 = "67890"
 
         fail_msgs = []
         if not sn1:
@@ -385,15 +458,15 @@ class ExecutionView(QWidget):
 
     # -------------------------------------------------
     def _read_qr(self, device_key, com_port):
+        raw = None
         try:
             qr = SLAVE_DEVICES[device_key]
 
             print(f"[QR] Reading {qr['display_name']} → CMD {qr['read_cmd']}")
 
-            raw = RawSerial(port=com_port)
+            raw = RawSerial(port=com_port, baudrate=115200)
             data = raw.write_read(qr["read_cmd"])
-            raw.close()
-
+            
             serial = data.decode(errors="ignore").strip()
             #serial ="QR_CODE"
 
@@ -407,6 +480,9 @@ class ExecutionView(QWidget):
         except Exception as e:
             logger.error(f"{device_key} read failed: {e}")
             return None
+        finally:
+            if raw:
+                raw.close()
 
     # -------------------------------------------------
 
@@ -544,14 +620,18 @@ class ExecutionView(QWidget):
             print("[EXEC] All tests completed.")
             logger.info("All tests completed")
             QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.")
+            self._start_polling()
         elif status == "error":
             print("[EXEC] on_tests_finished : error")
             logger.info("[EXEC] on_tests_finished : error")
             QMessageBox.information(self.ui, "Test Failed", "Error")
+            self._start_polling()
         elif status == "stop_requested":
             print("[EXEC] on_tests_finished : stopped")
             logger.info("[EXEC] on_tests_finished : stopped")
             QMessageBox.information(self.ui, "Test Completed", "All tests have been stopped successfully.")
+            self._start_polling()
+
 
     # -------------------------------------------------
     def on_test_error(self, msg):
@@ -600,3 +680,131 @@ class ExecutionView(QWidget):
         msg.setText(f"Operation Stopped!\n\nReason: {reason}")
         msg.setStandardButtons(QMessageBox.Close)
         msg.exec()
+
+    # =========================================================
+    # POLLING LOGIC
+    # =========================================================
+    def _blink_label(self):
+        if not self.lbl_waiting: return
+        
+        # We toggle between BLUE and TRANSPARENT text
+        # Update style for header placement (14pt, margin-right 20px)
+        STYLE_VISIBLE = "font-size: 14pt; font-weight: bold; color: #0078d7; margin-right: 20px;"
+        STYLE_HIDDEN = "font-size: 14pt; font-weight: bold; color: transparent; margin-right: 20px;"
+        
+        current = self.lbl_waiting.styleSheet()
+        if "transparent" in current:
+            self.lbl_waiting.setStyleSheet(STYLE_VISIBLE)
+        else:
+            self.lbl_waiting.setStyleSheet(STYLE_HIDDEN)
+
+    def _start_polling(self):
+        return # Disabled for now
+        
+        # If STOP button is enabled, it means a test is running.
+        if self.btn_stop.isEnabled(): 
+            return
+            
+        # Try to find label if not linked
+        if not self.lbl_waiting:
+            self.lbl_waiting = self.window().findChild(QWidget, "label_waiting_status")
+        
+        com_port = self.cmb_comPort.currentText()
+        if com_port.startswith("--"): 
+            if self.lbl_waiting: self.lbl_waiting.setVisible(False)
+            self.blink_timer.stop()
+            return
+            
+        if not self.isVisible(): 
+            self._stop_polling()
+            return
+
+        if self.poller and self.poller.isRunning(): return
+            
+        try:
+            plc = SLAVE_DEVICES.get("PLC")
+            if not plc: return
+            
+            slave_id = plc["slave_id"]
+            start_coil = plc["coils"].get("START")
+            
+            if not start_coil: return
+            
+            logger.info(f"Starting Poller on {com_port}")
+            self.poller = StartPoller(com_port, slave_id, start_coil)
+            self.poller.start_signal.connect(self._handle_start_from_coil)
+            self.poller.start()
+            
+            self.blink_timer.start(800)
+            if self.lbl_waiting:
+                STYLE_VISIBLE = "font-size: 14pt; font-weight: bold; color: #0078d7; margin-right: 20px;"
+                self.lbl_waiting.setText("Waiting for START...")
+                self.lbl_waiting.setStyleSheet(STYLE_VISIBLE)
+                self.lbl_waiting.setVisible(True)
+
+        except Exception as e:
+            logger.error(f"Cannot start poller: {e}")
+
+    def _stop_polling(self):
+        self.blink_timer.stop()
+        
+        # Ensure label exists and hide it
+        if not self.lbl_waiting:
+            if self.window():
+                self.lbl_waiting = self.window().findChild(QWidget, "label_waiting_status")
+
+        if self.lbl_waiting: 
+            self.lbl_waiting.setVisible(False)
+
+        if self.poller:
+            self.poller.stop()
+            self.poller = None
+
+    def _handle_start_from_coil(self):
+        logger.info("Start Coil Detected!")
+        self._stop_polling()
+        time.sleep(0.5)
+
+        # Reset START Coil
+        try:
+            from src.core.drivers.modbus_driver import ModbusRTU
+            com_port = self.cmb_comPort.currentText()
+            
+            if not com_port.startswith("--"):
+                mb = None
+                try:
+                    mb = ModbusRTU(port=com_port)
+                    plc = SLAVE_DEVICES.get("PLC")
+                    if plc:
+                        slave_id = plc["slave_id"]
+                        start_coil = plc["coils"].get("START")
+                        if start_coil is not None:
+                            logger.info("Resetting START Coil...")
+                            mb.write_coil(slave_id, start_coil, False)
+                finally:
+                    if mb:
+                        mb.close()
+
+        except Exception as e:
+            logger.error(f"Failed to reset START Coil: {e}")
+
+        time.sleep(0.5)
+        # Trigger start test
+        self.start_tests()
+
+    def _on_com_port_changed(self):
+        self._stop_polling()
+        self._start_polling()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._start_polling()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._stop_polling()
+        
+    def closeEvent(self, event):
+        self._stop_polling()
+        super().closeEvent(event)
+
