@@ -69,8 +69,8 @@ class ReportUploader:
             dll_path = os.path.join(base_dir, "dlls", "CplEngineClient.dll")
 
             if os.path.exists(dll_path):
-                clr.AddReference(dll_path)
-                assembly = System.Reflection.Assembly.LoadFile(dll_path)
+                # Use UnsafeLoadFrom to bypass network security checks (0x80131515)
+                assembly = self.System.Reflection.Assembly.UnsafeLoadFrom(dll_path)
                 self.AutoLogUploaderType = assembly.GetType("AutoLogUploader")
                 self.dll_loaded = True
                 logger.info(f"Loaded DLL from {dll_path}")
@@ -106,7 +106,7 @@ class ReportUploader:
             if self.dll_loaded and self.AutoLogUploaderType and self.System:
                 # Create instance
                 # Constructor signature: AutoLogUploader(string folders, int interval)
-                self.uploader_obj = System.Activator.CreateInstance(
+                self.uploader_obj = self.System.Activator.CreateInstance(
                     self.AutoLogUploaderType,
                     self.System.String(folders_json),
                     self.System.Int32(interval)

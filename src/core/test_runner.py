@@ -729,7 +729,7 @@ class TestRunner(QThread):
             f"Zbn={impedance_results['B']:.3f}MΩ"
         )
 
-        final_result = f"PASS ({result_text})" if all_pass else f"FAIL ({result_text})"
+        final_result = f"Pass ({result_text})" if all_pass else f"Fail ({result_text})"
 
         print(f"[PCB{pcb_index}] RESULT → {final_result}")
 

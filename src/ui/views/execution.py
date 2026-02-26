@@ -664,7 +664,7 @@ class ExecutionView(QWidget):
                             all_passed = False
                         else:
                             for r in results:
-                                if r.get("result") != "Pass":
+                                if "Pass" not in str(r.get("result", "")):
                                     all_passed = False
                                     break
 

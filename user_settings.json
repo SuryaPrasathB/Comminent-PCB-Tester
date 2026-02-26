@@ -4,21 +4,21 @@
         "template_path": "Report Export/template/active_template.xlsx",
         "export_path": "Report Export",
         "mappings": {
-            "project_name": "C5",
-            "pcb_serial": "C4",
-            "overall_status": "I4",
-            "timestamp": "I5",
-            "sn": "A8",
-            "description": "B8",
-            "r": "C8",
-            "y": "D8",
-            "b": "E8",
-            "n": "F8",
-            "expected_v": "G8",
-            "expected_i": "H8",
-            "measured_v": "I8",
-            "measured_i": "J8",
-            "result": "K6"
+            "project_name": "I4",
+            "pcb_serial": "B4",
+            "overall_status": "I5",
+            "timestamp": "B5",
+            "sn": "A9",
+            "description": "B9",
+            "r": "C9",
+            "y": "D9",
+            "b": "E9",
+            "n": "F9",
+            "expected_v": "G9",
+            "expected_i": "H9",
+            "measured_v": "I9",
+            "measured_i": "J9",
+            "result": "K9"
         }
     }
 }
