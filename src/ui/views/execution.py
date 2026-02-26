@@ -419,7 +419,10 @@ class ExecutionView(QWidget):
             self.show_safety_popup(safety_err)
             return
 
-        pcb_serial = self.txt_pcb_serial_1.text().strip() or "SINGLE_RUN"
+        # Ensure we pass a tuple of serials, even for single run
+        sn1 = self.txt_pcb_serial_1.text().strip() or "SINGLE_1"
+        sn2 = self.txt_pcb_serial_2.text().strip() or "SINGLE_2"
+        pcb_serials = (sn1, sn2)
 
         test_cases = load_test_cases(project_name)
 
@@ -438,7 +441,7 @@ class ExecutionView(QWidget):
         # Create runner
         self.runner = TestRunner(
             project_name=project_name,
-            pcb_serial=pcb_serial,
+            pcb_serial=pcb_serials, # Pass tuple
             test_cases=test_cases,
             com_port=com_port,
             start_index=selected_row,
@@ -619,11 +622,76 @@ class ExecutionView(QWidget):
 
     def on_tests_finished(self, status):
         self._set_running_state(False)
+
+        # Determine active PCBs and project
+        project_name = ""
+        pcb_serials = []
+        active_pcbs = []
+
+        if self.runner:
+            project_name = self.runner.project_name
+            pcb_serials = self.runner.pcb_serials
+            active_pcbs = self.runner.active_pcbs
+
         if status == "success":
             print("[EXEC] All tests completed.")
             logger.info("All tests completed")
-            QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.")
+
+            # --- Auto Report Export ---
+            try:
+                from src.core.report_generator import ReportGenerator
+                from src.core.report_uploader import ReportUploader
+                from src.core.db_utils import get_test_results
+
+                export_folder = None
+
+                for pcb_idx in active_pcbs:
+                    try:
+                        # pcb_serials is tuple/list, 0-indexed. pcb_idx is 1-based (1 or 2).
+                        if pcb_idx > len(pcb_serials):
+                            logger.warning(f"PCB Index {pcb_idx} out of range for serials {pcb_serials}")
+                            continue
+
+                        sn = pcb_serials[pcb_idx - 1]
+                        if not sn: continue
+
+                        # 1. Calculate Status
+                        results = get_test_results(project_name, sn)
+
+                        all_passed = True
+                        if not results:
+                            # No results?
+                            all_passed = False
+                        else:
+                            for r in results:
+                                if r.get("result") != "Pass":
+                                    all_passed = False
+                                    break
+
+                        overall = "PASS" if all_passed else "FAIL"
+
+                        # 2. Generate Report
+                        folder = ReportGenerator.generate_report(project_name, sn, overall)
+                        if folder:
+                            export_folder = folder
+
+                    except Exception as e_pcb:
+                        logger.error(f"Failed to generate report for PCB {pcb_idx}: {e_pcb}")
+
+                # 3. Update Uploader
+                if export_folder:
+                    try:
+                        ReportUploader().update_folder(export_folder)
+                    except Exception as e_upl:
+                        logger.error(f"Failed to update report uploader: {e_upl}")
+
+            except Exception as e:
+                logger.error(f"Report generation block failed: {e}")
+            # --------------------------
+
+            QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.\nReports generated.")
             self._start_polling()
+
         elif status == "error":
             print("[EXEC] on_tests_finished : error")
             logger.info("[EXEC] on_tests_finished : error")

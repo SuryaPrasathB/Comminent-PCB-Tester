@@ -425,3 +425,38 @@ def delete_project(project_name: str):
         conn.close()
         logger.info(f"DB connection closed after delete_project | project={project_name}")
 
+
+def get_test_results(project_name: str, pcb_serial: str):
+    """
+    Fetches all test results for a given project and PCB serial,
+    ordered by SN (sequence number).
+    """
+    logger.info(f"get_test_results called | Project={project_name}, PCB={pcb_serial}")
+
+    conn = connect_db()
+    if not conn:
+        logger.error("get_test_results failed: DB connection failed")
+        return []
+
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT sn, description, r, y, b, n,
+                   expected_v, expected_i,
+                   measured_v, measured_i, result, tested_at
+            FROM test_results
+            WHERE project_name=%s AND pcb_serial=%s
+            ORDER BY sn ASC
+        """, (project_name, pcb_serial))
+
+        rows = cur.fetchall()
+        logger.info(f"Fetched {len(rows)} results for {pcb_serial}")
+        return rows
+
+    except Exception as e:
+        logger.error(f"get_test_results failed: {e}")
+        return []
+
+    finally:
+        cur.close()
+        conn.close()

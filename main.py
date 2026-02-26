@@ -25,6 +25,26 @@ if __name__ == "__main__":
     AppTheme.apply_theme(app, saved_theme)
     logger.info(f"Applied saved theme: {saved_theme}")
 
+    # Initialize Report Uploader
+    try:
+        from src.core.report_uploader import ReportUploader
+        import datetime
+        import os
+
+        report_settings = settings.get_setting("report_export")
+        if report_settings:
+            export_path = report_settings.get("export_path", "Report Export")
+            date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+            folder = os.path.join(export_path, date_str)
+
+            os.makedirs(folder, exist_ok=True)
+
+            ReportUploader().start(folder)
+            logger.info(f"ReportUploader initialized for {folder}")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize ReportUploader: {e}")
+
     print("Starting application...")
     try:
         while True:
