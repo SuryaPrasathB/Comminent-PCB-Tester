@@ -75,15 +75,15 @@
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
           </property>
           <property name="formAlignment">
-           <set>Qt::AlignLeft|Qt::AlignTop</set>
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
           </property>
           <item row="0" column="0">
            <widget class="QLabel" name="label_vendor_title">
-            <property name="text">
-             <string>Vendor:</string>
-            </property>
             <property name="styleSheet">
              <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Vendor:</string>
             </property>
            </widget>
           </item>
@@ -96,11 +96,11 @@
           </item>
           <item row="1" column="0">
            <widget class="QLabel" name="label_email_title">
-            <property name="text">
-             <string>Email:</string>
-            </property>
             <property name="styleSheet">
              <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Email:</string>
             </property>
            </widget>
           </item>
@@ -119,11 +119,11 @@
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="label_web_title">
-            <property name="text">
-             <string>Website:</string>
-            </property>
             <property name="styleSheet">
              <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Website:</string>
             </property>
            </widget>
           </item>
@@ -233,24 +233,24 @@
            <widget class="QLineEdit" name="lineEdit_map_status"/>
           </item>
           <item row="1" column="0">
-           <widget class="QLabel" name="lbl_date_map">
+           <widget class="QLabel" name="lbl_timestamp_map">
             <property name="text">
-             <string>Date:</string>
+             <string>Timestamp:</string>
             </property>
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QLineEdit" name="lineEdit_map_date"/>
+           <widget class="QLineEdit" name="lineEdit_map_timestamp"/>
           </item>
           <item row="1" column="2">
-           <widget class="QLabel" name="lbl_time_map">
+           <widget class="QLabel" name="lbl_project_map">
             <property name="text">
-             <string>Time:</string>
+             <string>Project Name:</string>
             </property>
            </widget>
           </item>
           <item row="1" column="3">
-           <widget class="QLineEdit" name="lineEdit_map_time"/>
+           <widget class="QLineEdit" name="lineEdit_map_project"/>
           </item>
          </layout>
         </widget>
@@ -261,49 +261,14 @@
           <string>Column Mappings (Start Cell, e.g. A6)</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_columns">
-          <item row="0" column="0">
-           <widget class="QLabel" name="lbl_desc_map">
-            <property name="text">
-             <string>Description:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QLineEdit" name="lineEdit_map_desc"/>
-          </item>
-          <item row="0" column="2">
-           <widget class="QLabel" name="lbl_res_map">
-            <property name="text">
-             <string>Result:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QLineEdit" name="lineEdit_map_result"/>
-          </item>
-
-          <item row="1" column="0">
-           <widget class="QLabel" name="lbl_expv_map">
-            <property name="text">
-             <string>Expected V:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="lineEdit_map_expv"/>
-          </item>
-          <item row="1" column="2">
+          <item row="2" column="2">
            <widget class="QLabel" name="lbl_measv_map">
             <property name="text">
              <string>Measured V:</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="3">
-           <widget class="QLineEdit" name="lineEdit_map_measv"/>
-          </item>
-
-          <item row="2" column="0">
+          <item row="3" column="0">
            <widget class="QLabel" name="lbl_expi_map">
             <property name="text">
              <string>Expected I:</string>
@@ -311,70 +276,111 @@
            </widget>
           </item>
           <item row="2" column="1">
-           <widget class="QLineEdit" name="lineEdit_map_expi"/>
+           <widget class="QLineEdit" name="lineEdit_map_expv"/>
           </item>
-          <item row="2" column="2">
-           <widget class="QLabel" name="lbl_measi_map">
+          <item row="2" column="0">
+           <widget class="QLabel" name="lbl_expv_map">
             <property name="text">
-             <string>Measured I:</string>
+             <string>Expected V:</string>
             </property>
            </widget>
           </item>
           <item row="2" column="3">
-           <widget class="QLineEdit" name="lineEdit_map_measi"/>
+           <widget class="QLineEdit" name="lineEdit_map_measv"/>
           </item>
-
-          <item row="3" column="0">
+          <item row="4" column="0">
            <widget class="QLabel" name="lbl_r_map">
             <property name="text">
              <string>R:</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="lineEdit_map_r"/>
-          </item>
-           <item row="3" column="2">
-           <widget class="QLabel" name="lbl_y_map">
-            <property name="text">
-             <string>Y:</string>
-            </property>
-           </widget>
-          </item>
           <item row="3" column="3">
-           <widget class="QLineEdit" name="lineEdit_map_y"/>
+           <widget class="QLineEdit" name="lineEdit_map_measi"/>
           </item>
-
-           <item row="4" column="0">
-           <widget class="QLabel" name="lbl_b_map">
-            <property name="text">
-             <string>B:</string>
-            </property>
-           </widget>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_expi"/>
           </item>
           <item row="4" column="1">
-           <widget class="QLineEdit" name="lineEdit_map_b"/>
+           <widget class="QLineEdit" name="lineEdit_map_r"/>
           </item>
-           <item row="4" column="2">
+          <item row="3" column="2">
+           <widget class="QLabel" name="lbl_measi_map">
+            <property name="text">
+             <string>Measured I:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_y"/>
+          </item>
+          <item row="5" column="2">
            <widget class="QLabel" name="lbl_n_map">
             <property name="text">
              <string>N:</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="3">
+          <item row="4" column="2">
+           <widget class="QLabel" name="lbl_y_map">
+            <property name="text">
+             <string>Y:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="lbl_b_map">
+            <property name="text">
+             <string>B:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_b"/>
+          </item>
+          <item row="5" column="3">
            <widget class="QLineEdit" name="lineEdit_map_n"/>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="lbl_sn_col_map">
+            <property name="text">
+             <string>Serial No.:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_sn_col"/>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="lbl_desc_map">
+            <property name="text">
+             <string>Description:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_desc"/>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="lbl_res_map">
+            <property name="text">
+             <string>Result:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_result"/>
           </item>
          </layout>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="btn_save_report">
-         <property name="text">
-          <string>Save Report Configuration</string>
-         </property>
          <property name="styleSheet">
           <string>background-color: #1a73e8; color: white; padding: 8px;</string>
+         </property>
+         <property name="text">
+          <string>Save Report Configuration</string>
          </property>
         </widget>
        </item>

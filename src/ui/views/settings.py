@@ -53,10 +53,11 @@ class SettingsView(QWidget):
         # Single Mappings
         self.map_sn = self.findChild(QLineEdit, "lineEdit_map_sn")
         self.map_status = self.findChild(QLineEdit, "lineEdit_map_status")
-        self.map_date = self.findChild(QLineEdit, "lineEdit_map_date")
-        self.map_time = self.findChild(QLineEdit, "lineEdit_map_time")
+        self.map_timestamp = self.findChild(QLineEdit, "lineEdit_map_timestamp")
+        self.map_project = self.findChild(QLineEdit, "lineEdit_map_project")
 
         # Column Mappings
+        self.map_sn_col = self.findChild(QLineEdit, "lineEdit_map_sn_col")
         self.map_desc = self.findChild(QLineEdit, "lineEdit_map_desc")
         self.map_r = self.findChild(QLineEdit, "lineEdit_map_r")
         self.map_y = self.findChild(QLineEdit, "lineEdit_map_y")
@@ -86,9 +87,10 @@ class SettingsView(QWidget):
         mappings = report.get("mappings", {})
         self.map_sn.setText(mappings.get("pcb_serial", ""))
         self.map_status.setText(mappings.get("overall_status", ""))
-        self.map_date.setText(mappings.get("date", ""))
-        self.map_time.setText(mappings.get("time", ""))
+        self.map_timestamp.setText(mappings.get("timestamp", ""))
+        self.map_project.setText(mappings.get("project_name", ""))
 
+        self.map_sn_col.setText(mappings.get("sn", ""))
         self.map_desc.setText(mappings.get("description", ""))
         self.map_r.setText(mappings.get("r", ""))
         self.map_y.setText(mappings.get("y", ""))
@@ -137,10 +139,11 @@ class SettingsView(QWidget):
             "template_path": self.txt_template.text(),
             "export_path": self.txt_export.text(),
             "mappings": {
+                "project_name": self.map_project.text(),
                 "pcb_serial": self.map_sn.text(),
                 "overall_status": self.map_status.text(),
-                "date": self.map_date.text(),
-                "time": self.map_time.text(),
+                "timestamp": self.map_timestamp.text(),
+                "sn": self.map_sn_col.text(),
                 "description": self.map_desc.text(),
                 "r": self.map_r.text(),
                 "y": self.map_y.text(),

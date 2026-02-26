@@ -44,6 +44,11 @@ class ReportUploader:
         self.System = None
 
         # Try to load DLL
+        # Verified against "CPL ENGINE LOG UPLOAD DLL" README:
+        # - DLL: CplEngineClient.dll (Matches provided file in src/core/dlls)
+        # - Class: AutoLogUploader
+        # - Method: Run() (blocking), Stop()
+        # - Constructor: AutoLogUploader(string folderPaths, int intervalSeconds)
         self._load_dll()
 
     def _load_dll(self):
@@ -138,20 +143,7 @@ class ReportUploader:
 
         self.uploader_obj = None
         self.thread = None
-        # Do NOT reset current_folder here if we want to remember what was last set,
-        # but logically if stopped, we are not watching.
-        # However, to avoid restart loop if folder is same, start() checks current_folder.
-        # If stop() is called explicitly, we probably want to clear current_folder so next start works.
-        # But here start() calls stop(). If start() clears current_folder via stop(), check fails.
-        # So stop() should clear current_folder?
-        # No, start() sets current_folder AFTER stop().
-        # But start() checks current_folder BEFORE stop().
-        # So stop() clearing it is fine, except if start() relies on it?
-        # My start() logic: if current == new, return. Else stop(), set new, start.
-        # So stop() can clear it.
-        # Wait, if start() calls stop(), stop() clears current_folder.
-        # Then start() sets current_folder = new_folder.
-        # So it works.
+
         self.current_folder = None
 
     def update_folder(self, folder_path):

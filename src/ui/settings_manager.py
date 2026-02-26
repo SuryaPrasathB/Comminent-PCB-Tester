@@ -11,20 +11,21 @@ DEFAULT_SETTINGS = {
         "template_path": "Report Export/template/active_template.xlsx",
         "export_path": "Report Export",
         "mappings": {
+            "project_name": "",
             "pcb_serial": "",
             "overall_status": "",
-            "date": "",
-            "time": "",
-            "description": "A6",
-            "r": "B6",
-            "y": "C6",
-            "b": "D6",
-            "n": "E6",
-            "expected_v": "F6",
-            "expected_i": "G6",
-            "measured_v": "H6",
-            "measured_i": "I6",
-            "result": "J6"
+            "timestamp": "",
+            "sn": "A6",
+            "description": "B6",
+            "r": "C6",
+            "y": "D6",
+            "b": "E6",
+            "n": "F6",
+            "expected_v": "G6",
+            "expected_i": "H6",
+            "measured_v": "I6",
+            "measured_i": "J6",
+            "result": "K6"
         }
     }
 }

@@ -58,12 +58,12 @@ def generate_three_phase_diagram(
     dc_voltage,
     dc_current
 ):
-    print("[CD] generate_three_phase_diagram()")
-    print(f"r_voltage  : {r_voltage}")
-    print(f"y_voltage  : {y_voltage}")
-    print(f"b_voltage  : {b_voltage}")
-    print(f"dc_voltage : {dc_voltage}")
-    print(f"dc_current : {dc_current}")
+    # print("[CD] generate_three_phase_diagram()")
+    # print(f"r_voltage  : {r_voltage}")
+    # print(f"y_voltage  : {y_voltage}")
+    # print(f"b_voltage  : {b_voltage}")
+    # print(f"dc_voltage : {dc_voltage}")
+    # print(f"dc_current : {dc_current}")
 
     logger.info(
         f"generate_three_phase_diagram called | "
@@ -216,7 +216,7 @@ def generate_three_phase_diagram(
         svg_str = svg_str.replace(tag, new_tag, 1)
 
     data = svg_str.encode("utf-8")
-    print(f"[CD] SVG bytes generated: {len(data)}")
+    # print(f"[CD] SVG bytes generated: {len(data)}")
 
     logger.info(f"Three-phase diagram rendered | SVG bytes={len(data)}")
 

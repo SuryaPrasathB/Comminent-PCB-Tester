@@ -13,6 +13,9 @@ class ReportGenerator:
         Generates an Excel report for the given PCB test run.
         Returns the directory where the report was saved, or None on failure.
         """
+        if not project_name:
+            project_name = "Unknown Project"
+
         logger.info(f"Generating report for {project_name} - {pcb_serial} ({overall_status})")
 
         settings_mgr = SettingsManager()
@@ -53,10 +56,10 @@ class ReportGenerator:
             # Fill Single Values
             set_cell(mappings.get("pcb_serial"), pcb_serial)
             set_cell(mappings.get("overall_status"), overall_status)
+            set_cell(mappings.get("project_name"), project_name)
 
             now = datetime.now()
-            set_cell(mappings.get("date"), now.strftime("%Y-%m-%d"))
-            set_cell(mappings.get("time"), now.strftime("%H:%M:%S"))
+            set_cell(mappings.get("timestamp"), now.strftime("%Y-%m-%d %H:%M:%S"))
 
             # Helper to parse "A6" -> ("A", 6)
             def parse_cell(cell_ref):
@@ -68,6 +71,7 @@ class ReportGenerator:
 
             # Map result keys (from DB) to mapping keys (from settings)
             col_map = {
+                "sn": mappings.get("sn"),
                 "description": mappings.get("description"),
                 "r": mappings.get("r"),
                 "y": mappings.get("y"),
