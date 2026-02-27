@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>PCB Tester Pro</string>
+   <string>PRO-TRACE</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_main">
@@ -120,7 +120,7 @@
              <string notr="true">font-size: 16pt; font-weight: bold; color: white; margin-left: 10px;</string>
             </property>
             <property name="text">
-             <string>PCB TESTER</string>
+             <string>PRO-TRACE</string>
             </property>
            </widget>
           </item>

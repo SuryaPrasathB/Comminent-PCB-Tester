@@ -17,6 +17,14 @@ if __name__ == "__main__":
     logger.info("Database tables checked/created")
 
     app = QApplication(sys.argv)
+    
+    # Set global application icon (High quality for taskbar)
+    import os
+    from PySide6.QtGui import QIcon
+    icon_path = os.path.join("resources", "icons", "app_icon.ico")
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+    
     logger.info("QApplication created")
 
     # Apply saved theme

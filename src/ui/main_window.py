@@ -39,10 +39,20 @@ class MainWindow(QMainWindow):
         icon_path = os.path.join("resources", "icons", "app_icon.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
-            # Load into sidebar logo
-            if hasattr(self, 'label_logo_icon'):
-                pixmap = QPixmap(icon_path)
-                self.label_logo_icon.setPixmap(pixmap)
+
+        # Set Sidebar Logo (Prefer PNG, fallback to ICO)
+        png_path = os.path.join("resources", "icons", "app_icon.png")
+        logo_path = png_path if os.path.exists(png_path) else icon_path
+        
+        if os.path.exists(logo_path) and hasattr(self, 'label_logo_icon'):
+            pixmap = QPixmap(logo_path)
+            # Ensure correct aspect ratio scaling to prevent stretching
+            scaled_pixmap = pixmap.scaled(
+                self.label_logo_icon.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.label_logo_icon.setPixmap(scaled_pixmap)
     # -------------------------------------------------
     def load_ui(self):
         loader = QUiLoader()
@@ -70,7 +80,7 @@ class MainWindow(QMainWindow):
         if self.centralWidget() and self.centralWidget().layout():
             self.centralWidget().layout().setStretch(1, 1)
 
-        self.setWindowTitle("PCB Tester Pro")
+        self.setWindowTitle("PRO-TRACE")
 
         # Bind Widgets
         self.stack = self.findChild(QStackedWidget, "stackedWidget_content")
@@ -219,7 +229,7 @@ class MainWindow(QMainWindow):
             "logs": "System Logs",
             "settings": "System Settings"
         }
-        self.lbl_title.setText(titles.get(page_name, "PCB Tester"))
+        self.lbl_title.setText(titles.get(page_name, "PRO-TRACE"))
 
         view = self._get_or_create_view(page_name)
         if view:

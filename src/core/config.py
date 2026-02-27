@@ -1,6 +1,6 @@
 # config.py
 # =====================================================
-# PCB Tester – CENTRAL CONFIGURATION
+# PRO-TRACE – CENTRAL CONFIGURATION
 # =====================================================
 
 import logging

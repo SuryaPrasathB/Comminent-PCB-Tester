@@ -47,7 +47,7 @@ class LoginWindow(QDialog):
         self.btn_login = self.findChild(QPushButton, "btn_primary")
 
         # Set Title
-        self.setWindowTitle("Login - PCB Tester")
+        self.setWindowTitle("Login - PRO-TRACE")
 
         # Set Defaults (Dev Convenience)
         self.txt_username.setText("Admin")

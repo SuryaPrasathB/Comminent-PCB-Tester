@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Login - PCB Tester</string>
+   <string>Login - PRO-TRACE</string>
   </property>
   <property name="styleSheet">
    <string notr="true">QDialog { background-color: #F3F3F3; }</string>
@@ -59,7 +59,7 @@
       <string notr="true">color: #007ACC;</string>
      </property>
      <property name="text">
-      <string>PCB TESTER</string>
+      <string>PRO-TRACE</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
