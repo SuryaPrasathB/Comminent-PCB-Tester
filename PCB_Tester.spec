@@ -9,11 +9,15 @@ a = Analysis(
     datas=[
         ('src/ui/forms/*.ui', 'src/ui/forms'),
         ('src/ui/forms/*.svg', 'src/ui/forms'),
+        ('src/core/dlls/*', 'src/core/dlls'),
+        ('resources/icons/*', 'resources/icons'),
     ],
     hiddenimports=[
         'qtawesome',
         'PySide6.QtUiTools',
-        'mysql.connector.locales.eng.client_error'
+        'mysql.connector.locales.eng.client_error',
+        'clr',
+        'System'
     ],
     hookspath=[],
     hooksconfig={},
@@ -46,5 +50,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='resources/icons/app_icon.ico',
 )

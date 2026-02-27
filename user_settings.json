@@ -1,8 +1,8 @@
 {
     "theme": "Light",
     "report_export": {
-        "template_path": "Report Export/template/active_template.xlsx",
-        "export_path": "Report Export",
+        "template_path": "C:/Report Export/template/active_template.xlsx",
+        "export_path": "C:/Report Export",
         "mappings": {
             "project_name": "I4",
             "pcb_serial": "B4",

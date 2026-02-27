@@ -51,7 +51,7 @@ class ReportUploader:
         # - Constructor: AutoLogUploader(string folderPaths, int intervalSeconds)
         self._load_dll()
 
-    def _load_dll(self):
+    def _load_dll(self): 
         try:
             # Check if pythonnet is installed
             spec = importlib.util.find_spec("clr")

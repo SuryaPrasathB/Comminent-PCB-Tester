@@ -35,13 +35,19 @@ class MainWindow(QMainWindow):
         self.setup_icons()
         self.setup_navigation()
 
+        # Resolve base path for resources (PyInstaller compatibility)
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.abspath(".")
+
         # Set Window Icon
-        icon_path = os.path.join("resources", "icons", "app_icon.ico")
+        icon_path = os.path.join(base_path, "resources", "icons", "app_icon.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
         # Set Sidebar Logo (Prefer PNG, fallback to ICO)
-        png_path = os.path.join("resources", "icons", "app_icon.png")
+        png_path = os.path.join(base_path, "resources", "icons", "app_icon.png")
         logo_path = png_path if os.path.exists(png_path) else icon_path
         
         if os.path.exists(logo_path) and hasattr(self, 'label_logo_icon'):
