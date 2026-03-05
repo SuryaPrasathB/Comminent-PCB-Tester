@@ -17,6 +17,14 @@ from src.core.config import (
 
 from src.core.logger import logger
 
+LIMIT_TABLE = {
+    0.0:  {"v_upper": 5.75, "v_lower": 5.40},
+    0.5:  {"v_upper": 5.75, "v_lower": 5.40},
+    1.25: {"v_upper": 5.75, "v_lower": 5.30},
+    2.5:  {"v_upper": 5.75, "v_lower": 5.20},
+}
+
+ZERO_CURRENT_LIMIT = 0.2
 
 class TestRunner(QThread):
     result_signal = Signal(dict)
@@ -497,10 +505,11 @@ class TestRunner(QThread):
         # 5️⃣ VALIDATION
         # =================================================
         try:
-            v_str = str(tc["v"].replace("V", "")).strip()  # ensure string + remove spaces
+
+            v_str = str(tc["v"].replace("V", "")).strip()
             expected_v = float(v_str)
 
-            i_str = str(tc["i"].replace("A", "")).strip()  # ensure string + remove spaces
+            i_str = str(tc["i"].replace("A", "")).strip()
             expected_i = float(i_str)
 
             print(f"[TEST] expected_v: {expected_v}")
@@ -509,21 +518,33 @@ class TestRunner(QThread):
             print(f"[TEST] measured_v: {measured_v}")
             print(f"[TEST] measured_i: {measured_i}")
 
-            if expected_v != 0:
-                voltage_error = ((expected_v - measured_v) / expected_v) * 100
+            # -----------------------------------------
+            # Get voltage limits from table
+            # -----------------------------------------
+            if expected_i not in LIMIT_TABLE:
+                raise ValueError(f"No limits defined for load {expected_i}A")
+
+            limits = LIMIT_TABLE[expected_i]
+            v_upper = limits["v_upper"]
+            v_lower = limits["v_lower"]
+
+            # -----------------------------------------
+            # Current limits
+            # -----------------------------------------
+            if expected_i == 0:
+                i_upper = ZERO_CURRENT_LIMIT
+                i_lower = -ZERO_CURRENT_LIMIT
             else:
-                voltage_error = measured_v
+                i_upper = expected_i + ZERO_CURRENT_LIMIT
+                i_lower = expected_i - ZERO_CURRENT_LIMIT
 
-            if expected_i != 0:
-                current_error = ((expected_i - measured_i) / expected_i) * 100
-            else:
-                current_error = measured_i
+            print(f"[TEST] Voltage limits: {v_lower} - {v_upper}")
+            print(f"[TEST] Current limits: {i_lower} - {i_upper}")
 
-            print(f"[TEST] voltage_error: {voltage_error}")
-            print(f"[TEST] current_error: {current_error}")
+            voltage_pass = v_lower <= measured_v <= v_upper
+            current_pass = i_lower <= measured_i <= i_upper
 
-            result = "Pass" if ((abs(voltage_error) <= VOLTAGE_TOLERANCE_PERCENT) and (
-                        abs(current_error) <= CURRENT_TOLERANCE_PERCENT)) else "Fail"
+            result = "Pass" if (voltage_pass and current_pass) else "Fail"
 
         except Exception as e:
             print(f"[TEST] Exception occurred: {e}")
