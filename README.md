@@ -1,8 +1,8 @@
-# PCB Tester Pro
+# PRO-TRACE
 
 > **Automated Industrial Quality Assurance System for PCB Manufacturing**
 
-**PCB Tester Pro** is a mission-critical, industrial-grade software solution designed to automate the electrical testing and validation of Power Supply Unit (PSU) Printed Circuit Boards (PCBs). It replaces manual multimeter testing with a high-speed, safety-critical automated test sequence, ensuring consistent quality and operator safety.
+**PRO-TRACE** is a mission-critical, industrial-grade software solution designed to automate the electrical testing and validation of Power Supply Unit (PSU) Printed Circuit Boards (PCBs). It replaces manual multimeter testing with a high-speed, safety-critical automated test sequence, ensuring consistent quality and operator safety.
 
 This system is built for **Manufacturing Engineers**, **Test Operators**, and **Quality Assurance Managers** who require reliable, traceable, and high-throughput testing in a factory environment.
 
@@ -15,7 +15,7 @@ The system operates as a **SCADA-lite** control application, orchestrating hardw
 ```ascii
 +-----------------+      Modbus RTU       +------------------+
 |   Host PC       | <--- (RS-485) ------> |    PLC Controller|
-| (PCB Tester Pro)|                       | (Master Control) |
+| (PRO-TRACE)|                       | (Master Control) |
 +-----------------+                       +---------+--------+
         |                                           |
         | SQL                                       | 24V I/O

@@ -1,8 +1,8 @@
 # DEVELOPER GUIDE: Internal Engineering
 
-> **PCB Tester Pro - System Architecture & Maintenance Guide**
+> **PRO-TRACE - System Architecture & Maintenance Guide**
 >
-> This document details the internal design, coding standards, and extension points for software engineers maintaining the PCB Tester Pro system.
+> This document details the internal design, coding standards, and extension points for software engineers maintaining the PRO-TRACE system.
 
 ---
 

@@ -37,7 +37,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PCB_Tester_Pro',
+    name='PRO-TRACE',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

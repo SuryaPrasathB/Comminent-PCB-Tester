@@ -1,8 +1,8 @@
 # HOW TO USE: Operator & User Manual
 
-> **PCB Tester Pro - System Manual**
+> **PRO-TRACE - System Manual**
 >
-> This document provides step-by-step instructions for operating the PCB Tester Pro software safely and efficiently.
+> This document provides step-by-step instructions for operating the PRO-TRACE software safely and efficiently.
 
 ---
 
@@ -17,7 +17,7 @@
     *   *Verify*: Windows desktop loads successfully.
 
 ### 2. Software Startup
-1.  **Launch**: Double-click the **PCB Tester Pro** shortcut on the desktop.
+1.  **Launch**: Double-click the **PRO-TRACE** shortcut on the desktop.
     *   *Verify*: The application splash screen (if any) or Login Window appears.
 2.  **Login**: Enter your authorized username and password.
     *   *Note*: Contact your supervisor if you do not have credentials.
@@ -164,7 +164,7 @@ Managed via **Project Configuration**.
 3.  [ ] Run one "Dummy Test" to ensure all relays click and meters read.
 
 ### Shutdown Procedure
-1.  Close the **PCB Tester Pro** application (Click 'X' or Exit).
+1.  Close the **PRO-TRACE** application (Click 'X' or Exit).
 2.  Turn OFF the Test Jig cabinet power.
 3.  Shut down the PC.
 

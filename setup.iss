@@ -6,19 +6,19 @@
 ; Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{CPL-PSU-TESTER-PRO-123456789}}
-AppName=PCB Tester Pro
+AppName=PRO-TRACE
 AppVersion=1.0
 AppPublisher=L S Control Systems
 AppPublisherURL=https://lscssystems.com
 AppSupportURL=https://lscssystems.com
 AppUpdatesURL=https://lscssystems.com
-DefaultDirName={autopf}\PCB Tester Pro
-DefaultGroupName=PCB Tester Pro
+DefaultDirName={autopf}\PRO-TRACE
+DefaultGroupName=PRO-TRACE
 DisableProgramGroupPage=yes
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=admin
 OutputDir=.
-OutputBaseFilename=PCB_Tester_Pro_Setup
+OutputBaseFilename=PRO-TRACE_Setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -32,7 +32,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; The main executable. NOTE: User must run PyInstaller first to generate this!
-Source: "dist\PCB_Tester_Pro.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\PRO-TRACE.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ; The resources folder (for runtime icons).
 Source: "resources\*"; DestDir: "{app}\resources"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -47,9 +47,9 @@ Source: "Report Export\*"; DestDir: "{app}\Report Export"; Flags: ignoreversion 
 Name: "{app}\Report Export"; Permissions: users-modify
 
 [Icons]
-Name: "{group}\PCB Tester Pro"; Filename: "{app}\PCB_Tester_Pro.exe"
-Name: "{group}\{cm:UninstallProgram,PCB Tester Pro}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\PCB Tester Pro"; Filename: "{app}\PCB_Tester_Pro.exe"; Tasks: desktopicon
+Name: "{group}\PRO-TRACE"; Filename: "{app}\PRO-TRACE.exe"
+Name: "{group}\{cm:UninstallProgram,PRO-TRACE}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\PRO-TRACE"; Filename: "{app}\PRO-TRACE.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\PCB_Tester_Pro.exe"; Description: "{cm:LaunchProgram,PCB Tester Pro}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\PRO-TRACE.exe"; Description: "{cm:LaunchProgram,PRO-TRACE}"; Flags: nowait postinstall skipifsilent
