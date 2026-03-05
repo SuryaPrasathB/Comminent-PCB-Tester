@@ -1,0 +1,24 @@
+{
+    "theme": "Light",
+    "report_export": {
+        "template_path": "C:/Report Export/template/active_template.xlsx",
+        "export_path": "C:/Report Export",
+        "mappings": {
+            "project_name": "I4",
+            "pcb_serial": "B4",
+            "overall_status": "I5",
+            "timestamp": "B5",
+            "sn": "A9",
+            "description": "B9",
+            "r": "C9",
+            "y": "D9",
+            "b": "E9",
+            "n": "F9",
+            "expected_v": "G9",
+            "expected_i": "H9",
+            "measured_v": "I9",
+            "measured_i": "J9",
+            "result": "K9"
+        }
+    }
+}

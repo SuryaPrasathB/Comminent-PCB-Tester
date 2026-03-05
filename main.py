@@ -1,10 +1,12 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from new_ui.login_window import LoginWindow
-from new_ui.main_window import MainWindow
-from db_utils import create_tables
+from src.ui.login_window import LoginWindow
+from src.ui.main_window import MainWindow
+from src.ui.settings_manager import SettingsManager
+from src.ui.theme import AppTheme
+from src.core.db_utils import create_tables
 
-from logs import logger
+from src.core.logger import logger
 
 
 if __name__ == "__main__":
@@ -15,37 +17,83 @@ if __name__ == "__main__":
     logger.info("Database tables checked/created")
 
     app = QApplication(sys.argv)
+    
+    # Set global application icon (High quality for taskbar)
+    import os
+    from PySide6.QtGui import QIcon
+    icon_path = os.path.join("resources", "icons", "app_icon.ico")
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+    
     logger.info("QApplication created")
+
+    # Apply saved theme
+    settings = SettingsManager()
+    saved_theme = settings.get_setting("theme", AppTheme.LIGHT)
+    AppTheme.apply_theme(app, saved_theme)
+    logger.info(f"Applied saved theme: {saved_theme}")
+
+    # Initialize Report Uploader
+    try:
+        from src.core.report_uploader import ReportUploader
+        import datetime
+        import os
+
+        report_settings = settings.get_setting("report_export")
+        if report_settings:
+            export_path = report_settings.get("export_path", "Report Export")
+            date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+            folder = os.path.join(export_path, date_str)
+
+            os.makedirs(folder, exist_ok=True)
+
+            ReportUploader().start(folder)
+            logger.info(f"ReportUploader initialized for {folder}")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize ReportUploader: {e}")
 
     print("Starting application...")
     try:
-        login = LoginWindow()
-        logger.info("LoginWindow instance created")
+        while True:
+            login = LoginWindow()
+            logger.info("LoginWindow instance created")
 
-        print("Login dialog created")
-        result = login.exec()
-        print(f"Login dialog result: {result}")
+            print("Login dialog created")
+            result = login.exec()
+            print(f"Login dialog result: {result}")
 
-        logger.info(f"Login dialog closed with result={result}")
+            logger.info(f"Login dialog closed with result={result}")
 
-        if result == LoginWindow.Accepted:
-            role = login.logged_in_role
-            print(f"Login successful - role: {role}")
+            if result == LoginWindow.Accepted:
+                role = login.logged_in_role
+                print(f"Login successful - role: {role}")
 
-            logger.info(f"Login successful, role='{role}'")
+                logger.info(f"Login successful, role='{role}'")
 
-            main_win = MainWindow(role)
-            logger.info("MainWindow instance created")
+                main_win = MainWindow(role)
+                logger.info("MainWindow instance created")
 
-            main_win.showMaximized()
-            logger.info("MainWindow shown maximized")
+                main_win.showMaximized()
+                logger.info("MainWindow shown maximized")
 
-            sys.exit(app.exec())
+                # Block until main window closes
+                app.exec()
 
-        else:
-            print("Login cancelled")
-            logger.warning("Login cancelled by user")
-            sys.exit(0)
+                # Check if logout was requested
+                if hasattr(main_win, 'wants_relogin') and main_win.wants_relogin:
+                    logger.info("Logout requested - restarting login")
+                    continue
+                else:
+                    logger.info("Application closed by user")
+                    break
+
+            else:
+                print("Login cancelled")
+                logger.warning("Login cancelled by user")
+                break
+
+        sys.exit(0)
 
     except Exception as e:
         print(f"Application error: {e}")

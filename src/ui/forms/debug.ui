@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DebugWidget</class>
+ <widget class="QWidget" name="DebugWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>863</width>
+    <height>857</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+QWidget#DebugWidget {
+    background-color: #f8f9fa;
+}
+QLabel {
+    font-family: &quot;Segoe UI&quot;, Arial, sans-serif;
+    font-size: 13px;
+    color: #495057;
+}
+QLineEdit {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    background-color: #ffffff;
+    font-size: 14px;
+    color: #212529;
+}
+QComboBox {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 30px 8px 12px;
+    background-color: #ffffff;
+    font-size: 14px;
+    color: #212529;
+}
+QPushButton {
+    background-color: #1a73e8;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 6px;
+}
+QPushButton#btn_apply_taps {
+    background-color: #28a745;
+}
+QPushButton#btn_apply_taps:hover {
+    background-color: #218838;
+}
+QPushButton#btn_reset_taps {
+    background-color: #dc3545;
+}
+QPushButton#btn_reset_taps:hover {
+    background-color: #c82333;
+}
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_Main">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_Main">
+     <item>
+      <widget class="QGroupBox" name="groupBox_Controls">
+       <property name="title">
+        <string>Controls</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_Controls">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_COM">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>COM Port:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboBox_comPorts"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_Tapping">
+          <property name="title">
+           <string>Tapping Controls</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_Tapping">
+           <item row="5" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Current 2</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>R Voltage</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Current 1</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QComboBox" name="combo_current_1"/>
+           </item>
+           <item row="13" column="0" colspan="2">
+            <widget class="QGroupBox" name="group_impedance_manual">
+             <property name="title">
+              <string>Impedance Relay Manual Control</string>
+             </property>
+             <layout class="QGridLayout" name="gridLayout_ImpedanceManual">
+              <item row="4" column="0">
+               <widget class="QPushButton" name="btn_imp2_r">
+                <property name="text">
+                 <string>IMP2_R : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QPushButton" name="btn_imp1_r">
+                <property name="text">
+                 <string>IMP1_R : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QPushButton" name="btn_imp1_y">
+                <property name="text">
+                 <string>IMP1_Y : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QPushButton" name="btn_imp2_b">
+                <property name="text">
+                 <string>IMP2_B : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="3">
+               <widget class="QPushButton" name="btn_imp2_n">
+                <property name="text">
+                 <string>IMP2_N : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label">
+                <property name="text">
+                 <string>PCB 2</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="3">
+               <widget class="QPushButton" name="btn_imp1_n">
+                <property name="text">
+                 <string>IMP1_N : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QPushButton" name="btn_imp2_y">
+                <property name="text">
+                 <string>IMP2_Y : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="2">
+               <widget class="QPushButton" name="btn_imp1_b">
+                <property name="text">
+                 <string>IMP1_B : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label">
+                <property name="text">
+                 <string>PCB 1</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0" colspan="2">
+               <widget class="QPushButton" name="btn_imp_test_pcb1">
+                <property name="text">
+                 <string>IMPEDANCE TEST PCB 1 : ON</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="2" colspan="2">
+               <widget class="QPushButton" name="btn_imp_test_pcb2">
+                <property name="text">
+                 <string>IMPEDANCE TEST PCB 2 : ON</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="combo_y_voltage"/>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="combo_neutral"/>
+           </item>
+           <item row="5" column="1">
+            <widget class="QComboBox" name="combo_current_2"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Y Voltage</string>
+             </property>
+            </widget>
+           </item>
+           <item row="9" column="0" colspan="2">
+            <widget class="QPushButton" name="btn_main_contactor">
+             <property name="minimumSize">
+              <size>
+               <width>160</width>
+               <height>45</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color:#28a745;color:white;font-weight:bold;font-size:14pt;</string>
+             </property>
+             <property name="text">
+              <string>MAIN : ON</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="combo_r_voltage"/>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Neutral</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QComboBox" name="combo_b_voltage"/>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>B Voltage</string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="0" colspan="2">
+            <widget class="QPushButton" name="btn_pcb2_enable">
+             <property name="text">
+              <string>PCB 2 ENABLE : ON</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="0" colspan="2">
+            <widget class="QPushButton" name="btn_reset_taps">
+             <property name="text">
+              <string>Reset All Relays</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0" colspan="2">
+            <widget class="QPushButton" name="btn_apply_taps">
+             <property name="text">
+              <string>Apply Voltage and Current</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_Readings">
+       <property name="title">
+        <string>Meter Readings</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_Readings">
+        <item row="4" column="0">
+         <widget class="QPushButton" name="btn_read_b_v">
+          <property name="text">
+           <string>Read B Phase Voltage</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QPushButton" name="btn_read_rn_r_2">
+          <property name="text">
+           <string>Read R-N Resistance 2</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QLineEdit" name="txt_rn_r_1"/>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="txt_r_v"/>
+        </item>
+        <item row="9" column="0">
+         <widget class="QPushButton" name="btn_read_bn_r_1">
+          <property name="text">
+           <string>Read B-N Resistance 1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="14" column="1">
+         <widget class="QLineEdit" name="txt_dc_i_2"/>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLineEdit" name="txt_y_v"/>
+        </item>
+        <item row="7" column="0">
+         <widget class="QPushButton" name="btn_read_yn_r_1">
+          <property name="text">
+           <string>Read Y-N Resistance 1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="0">
+         <widget class="QPushButton" name="btn_read_yn_r_2">
+          <property name="text">
+           <string>Read Y-N Resistance 2</string>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="1">
+         <widget class="QLineEdit" name="txt_dc_i_1"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QPushButton" name="btn_read_qr_2">
+          <property name="text">
+           <string>Read QR Code 2</string>
+          </property>
+         </widget>
+        </item>
+        <item row="12" column="0">
+         <widget class="QPushButton" name="btn_read_dc_v_2">
+          <property name="text">
+           <string>Read DC Voltage 2</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="txt_qr_1"/>
+        </item>
+        <item row="9" column="1">
+         <widget class="QLineEdit" name="txt_bn_r_1"/>
+        </item>
+        <item row="10" column="0">
+         <widget class="QPushButton" name="btn_read_bn_r_2">
+          <property name="text">
+           <string>Read B-N Resistance 2</string>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="0">
+         <widget class="QPushButton" name="btn_read_dc_v_1">
+          <property name="text">
+           <string>Read DC Voltage 1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="0">
+         <widget class="QPushButton" name="btn_read_dc_i_1">
+          <property name="text">
+           <string>Read DC Current 1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="14" column="0">
+         <widget class="QPushButton" name="btn_read_dc_i_2">
+          <property name="text">
+           <string>Read DC Current 2</string>
+          </property>
+         </widget>
+        </item>
+        <item row="15" column="0">
+         <widget class="QPushButton" name="btn_read_vry">
+          <property name="text">
+           <string>Read Vry Voltage</string>
+          </property>
+         </widget>
+        </item>
+        <item row="16" column="0">
+         <widget class="QPushButton" name="btn_read_vyb">
+          <property name="text">
+           <string>Read Vyb Voltage</string>
+          </property>
+         </widget>
+        </item>
+        <item row="17" column="0">
+         <widget class="QPushButton" name="btn_read_vbr">
+          <property name="text">
+           <string>Read Vbr Voltage</string>
+          </property>
+         </widget>
+        </item>
+        <item row="15" column="1">
+         <widget class="QLineEdit" name="txt_vry"/>
+        </item>
+        <item row="16" column="1">
+         <widget class="QLineEdit" name="txt_vyb"/>
+        </item>
+        <item row="17" column="1">
+         <widget class="QLineEdit" name="txt_vbr"/>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="txt_qr_2"/>
+        </item>
+        <item row="8" column="1">
+         <widget class="QLineEdit" name="txt_yn_r_2"/>
+        </item>
+        <item row="7" column="1">
+         <widget class="QLineEdit" name="txt_yn_r_1"/>
+        </item>
+        <item row="12" column="1">
+         <widget class="QLineEdit" name="txt_dc_v_2"/>
+        </item>
+        <item row="0" column="0">
+         <widget class="QPushButton" name="btn_read_qr_1">
+          <property name="text">
+           <string>Read QR Code 1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QPushButton" name="btn_read_rn_r_1">
+          <property name="text">
+           <string>Read R-N Resistance 1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="1">
+         <widget class="QLineEdit" name="txt_dc_v_1"/>
+        </item>
+        <item row="3" column="0">
+         <widget class="QPushButton" name="btn_read_y_v">
+          <property name="text">
+           <string>Read Y Phase Voltage</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QPushButton" name="btn_read_r_v">
+          <property name="text">
+           <string>Read R Phase Voltage</string>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="1">
+         <widget class="QLineEdit" name="txt_bn_r_2"/>
+        </item>
+        <item row="6" column="1">
+         <widget class="QLineEdit" name="txt_rn_r_2"/>
+        </item>
+        <item row="4" column="1">
+         <widget class="QLineEdit" name="txt_b_v"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

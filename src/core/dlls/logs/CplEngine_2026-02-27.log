@@ -1,0 +1,149 @@
+﻿===========================================
+CPL Engine Client - Log File
+Date: 2026-02-27
+Started: 11:40:05
+Location: D:\SURYA\.DEVELOPMENT\.PROJECTS\Project No XXX_PCB_Tester Comminent\Comminent PCB Tester\Comminent-PCB-Tester\src\core\dlls\logs
+===========================================
+
+===========================================
+CPL Engine Client - Log File
+Date: 2026-02-27
+Started: 11:40:05
+Location: D:\SURYA\.DEVELOPMENT\.PROJECTS\Project No XXX_PCB_Tester Comminent\Comminent PCB Tester\Comminent-PCB-Tester\src\core\dlls\logs
+===========================================
+
+[2026-02-27 11:40:05.344] [LOGSENDER] Background log upload monitor started
+[2026-02-27 11:40:05.346] [LOGSENDER] Background services initialized
+[2026-02-27 11:40:05.346] [LOGGER] Current LogLevel is Info
+[2026-02-27 11:40:05.429] [INFO ] [LogSenderBlockingMonitor] Initialized | Folders=1 | Interval=5s
+[2026-02-27 11:40:05.432] [INFO ] [LogSenderBlockingMonitor] RUN started
+===========================================
+CPL Engine Client - Log File
+Date: 2026-02-27
+Started: 11:56:39
+Location: D:\SURYA\.DEVELOPMENT\.PROJECTS\Project No XXX_PCB_Tester Comminent\Comminent PCB Tester\Comminent-PCB-Tester\src\core\dlls\logs
+===========================================
+
+[2026-02-27 11:56:39.673] [LOGSENDER] Background log upload monitor started
+[2026-02-27 11:56:39.673] [LOGSENDER] Background services initialized
+[2026-02-27 11:56:39.674] [LOGGER] Current LogLevel is Info
+[2026-02-27 11:56:39.746] [INFO ] [LogSenderBlockingMonitor] Initialized | Folders=1 | Interval=5s
+[2026-02-27 11:56:39.749] [INFO ] [LogSenderBlockingMonitor] RUN started
+===========================================
+CPL Engine Client - Log File
+Date: 2026-02-27
+Started: 12:19:14
+Location: D:\SURYA\.DEVELOPMENT\.PROJECTS\Project No XXX_PCB_Tester Comminent\Comminent PCB Tester\Comminent-PCB-Tester\src\core\dlls\logs
+===========================================
+
+[2026-02-27 12:19:14.170] [LOGSENDER] Background log upload monitor started
+[2026-02-27 12:19:14.170] [LOGSENDER] Background services initialized
+[2026-02-27 12:19:14.171] [LOGGER] Current LogLevel is Info
+[2026-02-27 12:19:14.295] [INFO ] [LogSenderBlockingMonitor] Initialized | Folders=1 | Interval=5s
+[2026-02-27 12:19:14.298] [INFO ] [LogSenderBlockingMonitor] RUN started
+[2026-02-27 12:19:34.484] [WARN ] TCP connection FAILED → cpl-db.comminent.com:29092
+[2026-02-27 12:19:34.547] [ERROR] Producer error: cpl-db.comminent.com:29092/bootstrap: Failed to resolve 'cpl-db.comminent.com:29092': The requested name is valid, but no data of the requested type was found. 
+[2026-02-27 12:19:34.547] [ERROR] Producer error: 1/1 brokers are down
+[2026-02-27 12:23:12.751] [INFO ] Message payload suppressed (length=11905)
+[2026-02-27 12:23:13.982] [INFO ] Message payload suppressed (length=11917)
+[2026-02-27 12:23:13.983] [INFO ] SUCCESS: All pending log files uploaded to CPL Engine Server.
+[2026-02-27 12:23:18.987] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:24.004] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:29.016] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:34.020] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:39.033] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:44.047] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:49.058] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:54.072] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:23:59.081] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:04.092] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:09.099] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:14.112] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:19.120] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:24.130] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:29.146] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:34.158] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:39.164] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:44.175] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:49.193] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:54.196] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:24:59.207] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:04.222] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:09.234] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:14.246] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:19.257] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:24.277] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:29.294] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:34.310] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:39.320] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:44.325] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:49.332] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:54.348] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:25:59.361] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:04.365] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:09.371] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:14.381] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:19.399] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:24.404] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:29.413] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:34.428] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:39.431] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:44.442] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:49.451] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:54.467] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:26:59.481] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:04.498] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:09.514] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:14.533] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:19.551] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:24.568] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:29.571] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:34.589] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:39.599] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:44.613] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:49.624] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:54.641] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:27:59.658] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:04.664] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:09.680] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:14.687] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:19.705] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:24.710] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:29.725] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:34.730] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:39.748] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:44.763] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:49.767] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:54.771] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:28:59.786] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:04.804] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:09.819] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:14.831] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:19.836] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:24.854] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:29.871] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:34.776] [ERROR] Producer error: 3.7.185.87:29092/1: Connection closed
+[2026-02-27 12:29:34.777] [ERROR] Producer error: 2/2 brokers are down
+[2026-02-27 12:29:34.874] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:35.340] [ERROR] Producer error: cpl-db.comminent.com:29092/bootstrap: Connection closed
+[2026-02-27 12:29:39.883] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:44.887] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:49.893] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:54.910] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:29:59.921] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:04.934] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:09.946] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:14.961] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:19.969] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:24.989] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:30.011] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:35.031] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:40.041] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:45.045] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:50.050] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:30:55.063] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:31:00.074] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:31:05.090] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:31:10.102] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:31:15.107] [INFO ] SUCCESS: All files were already uploaded. No action required.
+[2026-02-27 12:31:20.117] [INFO ] SUCCESS: All files were already uploaded. No action required.

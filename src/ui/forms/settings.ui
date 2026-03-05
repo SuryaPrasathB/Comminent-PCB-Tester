@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsView</class>
+ <widget class="QWidget" name="SettingsView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Settings</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>20</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tab_general">
+      <attribute name="title">
+       <string>General</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_general">
+       <item>
+        <widget class="QGroupBox" name="groupBox_appearance">
+         <property name="title">
+          <string>Appearance</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="QRadioButton" name="radio_light">
+            <property name="text">
+             <string>Light Mode</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radio_dark">
+            <property name="text">
+             <string>Dark Mode</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_about">
+         <property name="title">
+          <string>About</string>
+         </property>
+         <layout class="QFormLayout" name="formLayout">
+          <property name="labelAlignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="formAlignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_vendor_title">
+            <property name="styleSheet">
+             <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Vendor:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_vendor_value">
+            <property name="text">
+             <string>L S Control Systems</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_email_title">
+            <property name="styleSheet">
+             <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Email:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_email_value">
+            <property name="text">
+             <string>development@lscssystems.com</string>
+            </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::TextBrowserInteraction</set>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_web_title">
+            <property name="styleSheet">
+             <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Website:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="label_web_value">
+            <property name="text">
+             <string>lscssystems.com</string>
+            </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::TextBrowserInteraction</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_gen">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_report">
+      <attribute name="title">
+       <string>Report Export</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_report">
+       <item>
+        <widget class="QGroupBox" name="groupBox_paths">
+         <property name="title">
+          <string>File Paths</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_paths">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_template">
+            <property name="text">
+             <string>Template File:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEdit_templatePath"/>
+          </item>
+          <item row="0" column="2">
+           <widget class="QPushButton" name="btn_browse_template">
+            <property name="text">
+             <string>Browse...</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_export">
+            <property name="text">
+             <string>Export Folder:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="lineEdit_exportPath"/>
+          </item>
+          <item row="1" column="2">
+           <widget class="QPushButton" name="btn_browse_export">
+            <property name="text">
+             <string>Browse...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_single">
+         <property name="title">
+          <string>Single Value Mappings (Cell Address, e.g. C3)</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_single">
+          <item row="0" column="0">
+           <widget class="QLabel" name="lbl_sn_map">
+            <property name="text">
+             <string>PCB Serial:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_sn"/>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="lbl_status_map">
+            <property name="text">
+             <string>Overall Status:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_status"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="lbl_timestamp_map">
+            <property name="text">
+             <string>Timestamp:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_timestamp"/>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="lbl_project_map">
+            <property name="text">
+             <string>Project Name:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_project"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_columns">
+         <property name="title">
+          <string>Column Mappings (Start Cell, e.g. A6)</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_columns">
+          <item row="2" column="2">
+           <widget class="QLabel" name="lbl_measv_map">
+            <property name="text">
+             <string>Measured V:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="lbl_expi_map">
+            <property name="text">
+             <string>Expected I:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_expv"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="lbl_expv_map">
+            <property name="text">
+             <string>Expected V:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_measv"/>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="lbl_r_map">
+            <property name="text">
+             <string>R:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_measi"/>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_expi"/>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_r"/>
+          </item>
+          <item row="3" column="2">
+           <widget class="QLabel" name="lbl_measi_map">
+            <property name="text">
+             <string>Measured I:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_y"/>
+          </item>
+          <item row="5" column="2">
+           <widget class="QLabel" name="lbl_n_map">
+            <property name="text">
+             <string>N:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="2">
+           <widget class="QLabel" name="lbl_y_map">
+            <property name="text">
+             <string>Y:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="lbl_b_map">
+            <property name="text">
+             <string>B:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_b"/>
+          </item>
+          <item row="5" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_n"/>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="lbl_sn_col_map">
+            <property name="text">
+             <string>Serial No.:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_sn_col"/>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="lbl_desc_map">
+            <property name="text">
+             <string>Description:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLineEdit" name="lineEdit_map_desc"/>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="lbl_res_map">
+            <property name="text">
+             <string>Result:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLineEdit" name="lineEdit_map_result"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btn_save_report">
+         <property name="styleSheet">
+          <string>background-color: #1a73e8; color: white; padding: 8px;</string>
+         </property>
+         <property name="text">
+          <string>Save Report Configuration</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_rep">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
