@@ -1,0 +1,19 @@
+﻿===========================================
+CPL Engine Client - Log File
+Date: 2026-03-05
+Started: 12:42:28
+Location: D:\SURYA\.DEVELOPMENT\.PROJECTS\Project No XXX_PCB_Tester Comminent\Comminent PCB Tester\Comminent-PCB-Tester\src\core\dlls\logs
+===========================================
+
+===========================================
+CPL Engine Client - Log File
+Date: 2026-03-05
+Started: 12:42:29
+Location: D:\SURYA\.DEVELOPMENT\.PROJECTS\Project No XXX_PCB_Tester Comminent\Comminent PCB Tester\Comminent-PCB-Tester\src\core\dlls\logs
+===========================================
+
+[2026-03-05 12:42:29.008] [LOGSENDER] Background log upload monitor started
+[2026-03-05 12:42:29.008] [LOGSENDER] Background services initialized
+[2026-03-05 12:42:29.009] [LOGGER] Current LogLevel is Info
+[2026-03-05 12:42:29.129] [INFO ] [LogSenderBlockingMonitor] Initialized | Folders=1 | Interval=5s
+[2026-03-05 12:42:29.132] [INFO ] [LogSenderBlockingMonitor] RUN started
