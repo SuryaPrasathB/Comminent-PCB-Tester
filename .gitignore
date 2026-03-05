@@ -6,3 +6,4 @@ __pycache__
 /Exports
 /build
 /dist
+/src/core/dlls/logs
