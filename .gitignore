@@ -7,3 +7,6 @@ __pycache__
 /build
 /dist
 /src/core/dlls/logs
+*.exe
+*.spec
+*.iss

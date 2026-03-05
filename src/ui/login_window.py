@@ -49,9 +49,10 @@ class LoginWindow(QDialog):
         # Set Title
         self.setWindowTitle("Login - PRO-TRACE")
 
-        # Set Defaults (Dev Convenience)
-        self.txt_username.setText("Admin")
-        self.txt_password.setText("Admin")
+        # Set Defaults (User Convenience)
+        self.txt_username.setText("User")
+        self.txt_password.setText("User")
+        self.cmb_role.setCurrentText("User")
 
     def apply_styles(self):
         # Apply Light Theme for Login Screen explicitly (or use system default if complex)

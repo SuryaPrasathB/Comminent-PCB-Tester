@@ -143,8 +143,8 @@ class MainWindow(QMainWindow):
 
         # Role Management
         if self.role.lower() != "admin":
-            if self.btn_settings: self.btn_settings.setVisible(False)
             if self.btn_debug: self.btn_debug.setVisible(False)
+            if self.btn_logs: self.btn_logs.setVisible(False)
 
         # Smart Sidebar Setup
         if self.btn_toggle_sidebar:
