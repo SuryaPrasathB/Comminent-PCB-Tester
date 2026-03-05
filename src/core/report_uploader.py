@@ -53,20 +53,18 @@ class ReportUploader:
 
     def _load_dll(self): 
         try:
-            # Check if pythonnet is installed
-            spec = importlib.util.find_spec("clr")
-            if spec is None:
-                logger.warning("pythonnet (clr) not found. Using MockUploader.")
-                self.dll_loaded = False
-                return
-
+            import sys
             import clr
             import System
             self.System = System
 
             # Path to DLL - user should place it in src/core/dlls/
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            dll_path = os.path.join(base_dir, "dlls", "CplEngineClient.dll")
+            if getattr(sys, 'frozen', False):
+                base_dir = sys._MEIPASS
+                dll_path = os.path.join(base_dir, "src", "core", "dlls", "CplEngineClient.dll")
+            else:
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                dll_path = os.path.join(base_dir, "dlls", "CplEngineClient.dll")
 
             if os.path.exists(dll_path):
                 # Use UnsafeLoadFrom to bypass network security checks (0x80131515)
@@ -90,17 +88,22 @@ class ReportUploader:
         Starts the uploader watching the given folder.
         If running with different folder, restarts.
         """
+
+        # Normalize path
+        folder_path = os.path.abspath(folder_path)
+
         if self.current_folder == folder_path and self.thread and self.thread.is_alive():
             logger.info("Uploader already running for this folder.")
             return
 
         self.stop()
 
-        logger.info(f"Starting ReportUploader for {folder_path}")
+        # Prepare JSON for DLL and logging
+        folders_json = json.dumps([folder_path])
+        logger.info(f"Starting ReportUploader for {folders_json}")
         self.current_folder = folder_path
 
         try:
-            folders_json = json.dumps([folder_path])
             interval = 5  # default interval
 
             if self.dll_loaded and self.AutoLogUploaderType and self.System:
@@ -150,6 +153,9 @@ class ReportUploader:
         """
         Updates the watched folder. If different from current, restarts the uploader.
         """
+        # Normalize path
+        folder_path = os.path.abspath(folder_path)
+
         if self.current_folder != folder_path:
             logger.info(f"Folder changed from {self.current_folder} to {folder_path}. Restarting uploader.")
             self.start(folder_path)
