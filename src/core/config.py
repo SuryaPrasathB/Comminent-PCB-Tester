@@ -455,13 +455,13 @@ default_test_cases = [
     {"sn": 49, "desc": "Working under voltage variations", "r": "NC", "y": "NC", "b": "144V", "n": "C", "v": "5V",  "i": "2.5A"},
     
     {"sn": 50, "desc": "Working at higher voltage condition", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
-    {"sn": 51, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V",  "i": "1.25A"},
+    {"sn": 51, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5V",  "i": "1.25A"},
     {"sn": 52, "desc": "Working at higher voltage condition", "r": "510V", "y": "510V", "b": "510V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 53, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "0V", "i": "1.25A"},
+    {"sn": 53, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5V", "i": "1.25A"},
     {"sn": 54, "desc": "Working at higher voltage condition", "r": "520V", "y": "520V", "b": "520V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 55, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
+    {"sn": 55, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5V", "i": "1.25A"},
     {"sn": 56, "desc": "Working at higher voltage condition", "r": "530V", "y": "530V", "b": "530V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 57, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC","v": "0V", "i": "1.25A"},
+    {"sn": 57, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5V", "i": "1.25A"},
 
 ]
 
