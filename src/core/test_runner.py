@@ -515,9 +515,6 @@ class TestRunner(QThread):
             print(f"[TEST] expected_v: {expected_v}")
             print(f"[TEST] expected_i: {expected_i}")
 
-            print(f"[TEST] measured_v: {measured_v}")
-            print(f"[TEST] measured_i: {measured_i}")
-
             # -----------------------------------------
             # Get voltage limits from table
             # -----------------------------------------
@@ -542,21 +539,32 @@ class TestRunner(QThread):
             print(f"[TEST] Voltage limits: {v_lower} - {v_upper}")
             print(f"[TEST] Current limits: {i_lower} - {i_upper}")
 
-            voltage_pass = v_lower <= measured_v <= v_upper
-            current_pass = i_lower <= measured_i <= i_upper
-
-            result = "Pass" if (voltage_pass and current_pass) else "Fail"
-
         except Exception as e:
-            print(f"[TEST] Exception occurred: {e}")
+            print(f"[TEST] Exception occurred while setting limits: {e}")
             logger.error(f"Validation exception: {e}")
-            result = "Fail"
-
-        print(f"[TEST] Result = {result}")
-        logger.info(f"Test Result = {result}")
+            # If we fail to compute limits, all PCBs fail
+            for pcb in self.active_pcbs:
+                v_meas, i_meas = dc_results.get(pcb, (None, None))
+                self._finalize(tc, pcb, v_meas, i_meas, "Fail", ac_vals)
+            return
 
         for pcb in self.active_pcbs:
             v_meas, i_meas = dc_results.get(pcb, (None, None))
+
+            print(f"[TEST][PCB{pcb}] measured_v: {v_meas}")
+            print(f"[TEST][PCB{pcb}] measured_i: {i_meas}")
+
+            if v_meas is not None and i_meas is not None:
+                voltage_pass = v_lower <= v_meas <= v_upper
+                current_pass = i_lower <= i_meas <= i_upper
+
+                result = "Pass" if (voltage_pass and current_pass) else "Fail"
+            else:
+                result = "Fail"
+
+            print(f"[TEST][PCB{pcb}] Result = {result}")
+            logger.info(f"[PCB{pcb}] Test Result = {result}")
+
             self._finalize(tc, pcb, v_meas, i_meas, result, ac_vals)
 
     # -------------------------------------------------
