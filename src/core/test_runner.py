@@ -535,8 +535,9 @@ class TestRunner(QThread):
                 i_upper = ZERO_CURRENT_LIMIT
                 i_lower = -ZERO_CURRENT_LIMIT
             else:
-                i_upper = expected_i + ZERO_CURRENT_LIMIT
-                i_lower = expected_i - ZERO_CURRENT_LIMIT
+                tol = expected_i * (CURRENT_TOLERANCE_PERCENT / 100)
+                i_upper = expected_i + tol
+                i_lower = expected_i - tol
 
             print(f"[TEST] Voltage limits: {v_lower} - {v_upper}")
             print(f"[TEST] Current limits: {i_lower} - {i_upper}")
