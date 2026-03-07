@@ -8,7 +8,7 @@ from datetime import datetime
 
 from src.core.logger import logger
 
-SIMULATION_MODE = True
+SIMULATION_MODE = False
 
 # =====================================================
 # SERIAL / MODBUS COMMUNICATION SETTINGS
@@ -365,7 +365,7 @@ MIN_IMPEDANCE_MOHM = 0.5
 VOLTAGE_TOLERANCE_PERCENT = 20.0
 CURRENT_TOLERANCE_PERCENT = 20.0
 
-STABILIZATION_TIME = 1.5
+STABILIZATION_TIME = 2
 
 logger.info(
     f"Test tolerances set | "
