@@ -1,0 +1,95 @@
+import os
+from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QFrame, QVBoxLayout
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtCore import QFile, QTimer, Qt
+
+class TestCompletionDialog(QDialog):
+    def __init__(self, results_data, parent=None):
+        super().__init__(parent)
+
+        # Load UI
+        ui_file_path = os.path.join(os.path.dirname(__file__), "..", "forms", "test_completion.ui")
+        ui_file = QFile(ui_file_path)
+        if not ui_file.open(QFile.ReadOnly):
+            print(f"Cannot open {ui_file_path}: {ui_file.errorString()}")
+            return
+
+        loader = QUiLoader()
+        self.ui = loader.load(ui_file, self)
+        ui_file.close()
+
+        # Add the loaded UI to this dialog's layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.ui)
+        self.setLayout(layout)
+
+        self.setWindowTitle("Test Completed")
+        self.setFixedSize(600, 400)
+
+        # Bind UI elements
+        self.frame_pcb1 = self.ui.findChild(QFrame, "frame_pcb1")
+        self.frame_pcb2 = self.ui.findChild(QFrame, "frame_pcb2")
+        self.lbl_pcb1_sn = self.ui.findChild(QLabel, "lbl_pcb1_sn")
+        self.lbl_pcb2_sn = self.ui.findChild(QLabel, "lbl_pcb2_sn")
+        self.lbl_pcb1_status = self.ui.findChild(QLabel, "lbl_pcb1_status")
+        self.lbl_pcb2_status = self.ui.findChild(QLabel, "lbl_pcb2_status")
+        self.btn_close = self.ui.findChild(QPushButton, "btn_close")
+
+        # Connect close button
+        self.btn_close.clicked.connect(self.accept)
+
+        # Initialize UI based on results
+        self._init_ui(results_data)
+
+        # Set up auto-close timer (120 seconds = 120000 ms)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.accept)
+        self.timer.start(120000)
+
+    def _init_ui(self, results_data):
+        if 1 in results_data:
+            self.frame_pcb1.show()
+            self._configure_pcb_frame(
+                self.frame_pcb1,
+                self.lbl_pcb1_sn,
+                self.lbl_pcb1_status,
+                results_data[1]["sn"],
+                results_data[1]["status"]
+            )
+        else:
+            self.frame_pcb1.hide()
+
+        if 2 in results_data:
+            self.frame_pcb2.show()
+            self._configure_pcb_frame(
+                self.frame_pcb2,
+                self.lbl_pcb2_sn,
+                self.lbl_pcb2_status,
+                results_data[2]["sn"],
+                results_data[2]["status"]
+            )
+        else:
+            self.frame_pcb2.hide()
+
+    def _configure_pcb_frame(self, frame, lbl_sn, lbl_status, sn, status):
+        lbl_sn.setText(f"SN: {sn}")
+        lbl_status.setText(status)
+
+        # Dark green / dark red background depending on PASS / FAIL
+        if status == "PASS":
+            bg_color = "#2e7d32"
+        else:
+            bg_color = "#c62828"
+
+        frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {bg_color};
+                border-radius: 10px;
+            }}
+            QLabel {{
+                color: white;
+                background: transparent;
+                border: none;
+            }}
+        """)

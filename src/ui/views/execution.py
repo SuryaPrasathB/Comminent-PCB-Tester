@@ -648,8 +648,12 @@ class ExecutionView(QWidget):
                 from src.core.report_generator import ReportGenerator
                 from src.core.report_uploader import ReportUploader
                 from src.core.db_utils import get_test_results
+                from src.ui.views.test_completion import TestCompletionDialog
 
                 export_folder = None
+
+                # Dictionary to hold data for the test completion dialog
+                popup_results = {}
 
                 for pcb_idx in active_pcbs:
                     try:
@@ -675,6 +679,7 @@ class ExecutionView(QWidget):
                                     break
 
                         overall = "PASS" if all_passed else "FAIL"
+                        popup_results[pcb_idx] = {"sn": sn, "status": overall}
 
                         # 2. Generate Report
                         folder = ReportGenerator.generate_report(project_name, sn, overall)
@@ -695,7 +700,13 @@ class ExecutionView(QWidget):
                 logger.error(f"Report generation block failed: {e}")
             # --------------------------
 
-            QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.\nReports generated.")
+            # Show the new Test Completion popup
+            if popup_results:
+                dialog = TestCompletionDialog(popup_results, self.ui)
+                dialog.exec_()
+            else:
+                QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.\nReports generated.")
+
             self._start_polling()
 
         elif status == "error":
