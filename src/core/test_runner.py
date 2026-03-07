@@ -21,7 +21,7 @@ LIMIT_TABLE = {
     0.0:  {"v_upper": 5.75, "v_lower": 5.40},
     0.5:  {"v_upper": 5.75, "v_lower": 5.40},
     1.25: {"v_upper": 5.75, "v_lower": 5.30},
-    2.5:  {"v_upper": 5.75, "v_lower": 5.20},
+    2.5:  {"v_upper": 5.75, "v_lower": 5.10},
 }
 
 ZERO_CURRENT_LIMIT = 0.2
@@ -518,17 +518,21 @@ class TestRunner(QThread):
             # -----------------------------------------
             # Get voltage limits from table
             # -----------------------------------------
-            if expected_i not in LIMIT_TABLE:
-                raise ValueError(f"No limits defined for load {expected_i}A")
+            if expected_v == 0.0:
+                v_upper = 0.5
+                v_lower = -0.5
+            else:
+                if expected_i not in LIMIT_TABLE:
+                    raise ValueError(f"No limits defined for load {expected_i}A")
 
-            limits = LIMIT_TABLE[expected_i]
-            v_upper = limits["v_upper"]
-            v_lower = limits["v_lower"]
+                limits = LIMIT_TABLE[expected_i]
+                v_upper = limits["v_upper"]
+                v_lower = limits["v_lower"]
 
             # -----------------------------------------
             # Current limits
             # -----------------------------------------
-            if expected_i == 0:
+            if expected_i == 0.0:
                 i_upper = ZERO_CURRENT_LIMIT
                 i_lower = -ZERO_CURRENT_LIMIT
             else:

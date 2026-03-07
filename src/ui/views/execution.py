@@ -506,6 +506,9 @@ class ExecutionView(QWidget):
             QMessageBox.warning(self, "Warning", "Cannot reset while test is running.")
             return
 
+        # Stop polling before starting any test
+        self._stop_polling()
+
         # ==============================
         # 1️⃣ Reset UI tables
         # ==============================
@@ -542,6 +545,9 @@ class ExecutionView(QWidget):
 
             logger.info("All PLC coils reset successfully")
             QMessageBox.information(self, "Done", "Tables and PLC relays reset.")
+
+            # Start polling after reset
+            self._start_polling()
 
         except Exception as e:
             logger.error(f"PLC Reset failed: {e}")
