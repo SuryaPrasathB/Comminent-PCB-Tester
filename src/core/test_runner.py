@@ -12,20 +12,12 @@ from src.core.safety_monitor import SafetyMonitor
 
 from src.core.config import (
     SLAVE_DEVICES,
-    VOLTAGE_TOLERANCE_PERCENT, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, CURRENT_TOLERANCE_PERCENT, STABILIZATION_TIME,
+    VOLTAGE_TOLERANCE_PERCENT, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS,
     MIN_IMPEDANCE_MOHM, VLL_TO_TAP, SIMULATION_MODE
 )
 
 from src.core.logger import logger
-
-LIMIT_TABLE = {
-    0.0:  {"v_upper": 5.75, "v_lower": 5.40},
-    0.5:  {"v_upper": 5.75, "v_lower": 5.40},
-    1.25: {"v_upper": 5.75, "v_lower": 5.30},
-    2.5:  {"v_upper": 5.75, "v_lower": 5.10},
-}
-
-ZERO_CURRENT_LIMIT = 0.2
+from src.ui.settings_manager import SettingsManager
 
 class TestRunner(QThread):
     result_signal = Signal(dict)
@@ -70,6 +62,27 @@ class TestRunner(QThread):
 
         logger.info("TestRunner initialized")
         logger.info(f"Project={project_name}, PCB={pcb_serial}, COM={com_port}, RunSingle={run_single}, ActivePCBs={active_pcbs}")
+
+        # Load dynamic test parameters from SettingsManager
+        self.settings = SettingsManager().get_setting("test_parameters", {})
+        self.stabilization_time = float(self.settings.get("stabilization_time", 2.0))
+        self.current_tolerance_percent = float(self.settings.get("current_tolerance_percent", 20.0))
+        self.zero_current_limit = float(self.settings.get("zero_current_limit", 0.2))
+
+        raw_limits = self.settings.get("limit_table", {
+            "0.0": {"v_upper": 5.75, "v_lower": 5.40},
+            "0.5": {"v_upper": 5.75, "v_lower": 5.40},
+            "1.25": {"v_upper": 5.75, "v_lower": 5.30},
+            "2.5": {"v_upper": 5.75, "v_lower": 5.10}
+        })
+
+        # Convert string keys to floats for easier lookup later
+        self.limit_table = {}
+        for k, v in raw_limits.items():
+            try:
+                self.limit_table[float(k)] = v
+            except ValueError:
+                pass
 
     # -------------------------------------------------
     # Logging helpers
@@ -353,7 +366,7 @@ class TestRunner(QThread):
 
             print("[TEST] Waiting for stabilization (cool-down)")
             logger.info("Waiting for stabilization")
-            time.sleep(STABILIZATION_TIME)
+            time.sleep(self.stabilization_time)
 
             self._task_ok("Setting Voltage and Current Relays")
 
@@ -380,7 +393,7 @@ class TestRunner(QThread):
             self.modbus.write_coil( plc_slave, coils["MAIN_CONTACTOR"],True)
 
             # Allow contactor + transformer to settle
-            time.sleep(STABILIZATION_TIME)
+            time.sleep(self.stabilization_time)
 
         except Exception as e:
             self._task_fail("Setting Voltage and Current Relays", present_slave_name)
@@ -550,21 +563,21 @@ class TestRunner(QThread):
                 v_upper = 0.5
                 v_lower = -0.5
             else:
-                if expected_i not in LIMIT_TABLE:
-                    raise ValueError(f"No limits defined for load {expected_i}A")
+                if expected_i not in self.limit_table:
+                    logger.warning(f"No limits defined for load {expected_i}A. Falling back to default.")
 
-                limits = LIMIT_TABLE[expected_i]
-                v_upper = limits["v_upper"]
-                v_lower = limits["v_lower"]
+                limits = self.limit_table.get(expected_i, {"v_upper": 5.75, "v_lower": 5.40})
+                v_upper = limits.get("v_upper", 5.75)
+                v_lower = limits.get("v_lower", 5.40)
 
             # -----------------------------------------
             # Current limits
             # -----------------------------------------
             if expected_i == 0.0:
-                i_upper = ZERO_CURRENT_LIMIT
-                i_lower = -ZERO_CURRENT_LIMIT
+                i_upper = self.zero_current_limit
+                i_lower = -self.zero_current_limit
             else:
-                tol = expected_i * (CURRENT_TOLERANCE_PERCENT / 100)
+                tol = expected_i * (self.current_tolerance_percent / 100)
                 i_upper = expected_i + tol
                 i_lower = expected_i - tol
 
@@ -753,7 +766,7 @@ class TestRunner(QThread):
             self.modbus.write_coil(plc_slave, coils[coil_key], True)
 
             # Stabilization time for megger
-            time.sleep(STABILIZATION_TIME)
+            time.sleep(self.stabilization_time)
 
             # Read impedance from correct meter
             if SIMULATION_MODE:

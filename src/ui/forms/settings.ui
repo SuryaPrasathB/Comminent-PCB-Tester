@@ -144,6 +144,213 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="groupBox_test_params">
+         <property name="title">
+          <string>Test Parameters</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_test_params">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_stab_time">
+            <property name="text">
+             <string>Stabilization Time (s):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QDoubleSpinBox" name="spinBox_stab_time">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="maximum">
+             <double>999.99</double>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="label_curr_tol">
+            <property name="text">
+             <string>Current Tolerance (%):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QDoubleSpinBox" name="spinBox_curr_tol">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="maximum">
+             <double>100.0</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_zero_curr">
+            <property name="text">
+             <string>Zero Current Limit:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QDoubleSpinBox" name="spinBox_zero_curr">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="maximum">
+             <double>99.99</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="4">
+           <widget class="QGroupBox" name="groupBox_limits">
+            <property name="title">
+             <string>Limit Table</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_limits">
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_vupper">
+               <property name="text">
+                <string>V Upper</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QLabel" name="label_vlower">
+               <property name="text">
+                <string>V Lower</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_0_0">
+               <property name="text">
+                <string>0.0A</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QDoubleSpinBox" name="spinBox_0_0_vu">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QDoubleSpinBox" name="spinBox_0_0_vl">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_0_5">
+               <property name="text">
+                <string>0.5A</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="spinBox_0_5_vu">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QDoubleSpinBox" name="spinBox_0_5_vl">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_1_25">
+               <property name="text">
+                <string>1.25A</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="spinBox_1_25_vu">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="2">
+              <widget class="QDoubleSpinBox" name="spinBox_1_25_vl">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_2_5">
+               <property name="text">
+                <string>2.5A</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QDoubleSpinBox" name="spinBox_2_5_vu">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="2">
+              <widget class="QDoubleSpinBox" name="spinBox_2_5_vl">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <double>99.99</double>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btn_save_test_params">
+         <property name="styleSheet">
+          <string>background-color: #1a73e8; color: white; padding: 8px;</string>
+         </property>
+         <property name="text">
+          <string>Save Test Parameters</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer_gen">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

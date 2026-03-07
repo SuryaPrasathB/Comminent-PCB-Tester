@@ -27,6 +27,17 @@ DEFAULT_SETTINGS = {
             "measured_i": "J6",
             "result": "K6"
         }
+    },
+    "test_parameters": {
+        "stabilization_time": 2.0,
+        "current_tolerance_percent": 20.0,
+        "zero_current_limit": 0.2,
+        "limit_table": {
+            "0.0": {"v_upper": 5.75, "v_lower": 5.40},
+            "0.5": {"v_upper": 5.75, "v_lower": 5.40},
+            "1.25": {"v_upper": 5.75, "v_lower": 5.30},
+            "2.5": {"v_upper": 5.75, "v_lower": 5.10}
+        }
     }
 }
 
@@ -67,6 +78,23 @@ class SettingsManager:
                              merged_report["mappings"] = merged_mappings
 
                         self._settings["report_export"] = merged_report
+
+                    # Deep merge for test_parameters
+                    if "test_parameters" in loaded and isinstance(loaded["test_parameters"], dict):
+                        default_test = DEFAULT_SETTINGS["test_parameters"]
+                        merged_test = default_test.copy()
+                        merged_test.update(loaded["test_parameters"])
+
+                        if "limit_table" in loaded["test_parameters"]:
+                            merged_limit = default_test["limit_table"].copy()
+                            for k, v in loaded["test_parameters"]["limit_table"].items():
+                                if k in merged_limit:
+                                    merged_limit[k].update(v)
+                                else:
+                                    merged_limit[k] = v
+                            merged_test["limit_table"] = merged_limit
+
+                        self._settings["test_parameters"] = merged_test
 
                 logger.info("User settings loaded successfully.")
             except Exception as e:

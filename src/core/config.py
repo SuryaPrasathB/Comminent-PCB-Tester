@@ -363,14 +363,10 @@ logger.info(f"SLAVE_DEVICES configured | Devices={list(SLAVE_DEVICES.keys())}")
 MIN_IMPEDANCE_MOHM = 0.5
 
 VOLTAGE_TOLERANCE_PERCENT = 20.0
-CURRENT_TOLERANCE_PERCENT = 20.0
-
-STABILIZATION_TIME = 1.5
 
 logger.info(
     f"Test tolerances set | "
-    f"Voltage={VOLTAGE_TOLERANCE_PERCENT}%, "
-    f"Current={CURRENT_TOLERANCE_PERCENT}%"
+    f"Voltage={VOLTAGE_TOLERANCE_PERCENT}%"
 )
 # =====================================================
 # QR SCANNER (RAW SERIAL)
