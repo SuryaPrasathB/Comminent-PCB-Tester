@@ -6,32 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
-    <height>400</height>
+    <width>933</width>
+    <height>772</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Test Completed</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <widget class="QLabel" name="lbl_main_title">
-     <property name="font">
-      <font>
-       <family>Segoe UI</family>
-       <pointsize>20</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Test Completed</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
@@ -44,11 +26,24 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
          <widget class="QLabel" name="lbl_pcb1_title">
           <property name="font">
            <font>
             <family>Segoe UI</family>
-            <pointsize>16</pointsize>
+            <pointsize>26</pointsize>
             <weight>75</weight>
             <bold>true</bold>
            </font>
@@ -66,7 +61,7 @@
           <property name="font">
            <font>
             <family>Segoe UI</family>
-            <pointsize>12</pointsize>
+            <pointsize>22</pointsize>
            </font>
           </property>
           <property name="text">
@@ -95,7 +90,7 @@
           <property name="font">
            <font>
             <family>Segoe UI</family>
-            <pointsize>36</pointsize>
+            <pointsize>120</pointsize>
             <weight>75</weight>
             <bold>true</bold>
            </font>
@@ -134,11 +129,24 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
+         <spacer name="verticalSpacer_5">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
          <widget class="QLabel" name="lbl_pcb2_title">
           <property name="font">
            <font>
             <family>Segoe UI</family>
-            <pointsize>16</pointsize>
+            <pointsize>26</pointsize>
             <weight>75</weight>
             <bold>true</bold>
            </font>
@@ -156,7 +164,7 @@
           <property name="font">
            <font>
             <family>Segoe UI</family>
-            <pointsize>12</pointsize>
+            <pointsize>22</pointsize>
            </font>
           </property>
           <property name="text">
@@ -185,7 +193,7 @@
           <property name="font">
            <font>
             <family>Segoe UI</family>
-            <pointsize>36</pointsize>
+            <pointsize>120</pointsize>
             <weight>75</weight>
             <bold>true</bold>
            </font>
@@ -215,6 +223,22 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="lbl_reports_generated">
+     <property name="font">
+      <font>
+       <family>Segoe UI</family>
+       <pointsize>12</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Reports have been auto generated</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">

@@ -28,7 +28,7 @@ class TestCompletionDialog(QDialog):
         self.setLayout(layout)
 
         self.setWindowTitle("Test Completed")
-        self.setFixedSize(600, 400)
+        self.setFixedSize(900, 600)
 
         # Bind UI elements using self since the widgets are now children of self's layout
         self.frame_pcb1 = self.findChild(QFrame, "frame_pcb1")
@@ -94,5 +94,17 @@ class TestCompletionDialog(QDialog):
                 color: white;
                 background: transparent;
                 border: none;
+            }}
+            QLabel#lbl_pcb1_title, QLabel#lbl_pcb2_title {{
+                font-size: 38px;
+                font-weight: bold;
+            }}
+            QLabel#lbl_pcb1_sn, QLabel#lbl_pcb2_sn {{
+                font-size: 26px;
+                font-weight: normal;
+            }}
+            QLabel#lbl_pcb1_status, QLabel#lbl_pcb2_status {{
+                font-size: 140px;
+                font-weight: bold;
             }}
         """)
