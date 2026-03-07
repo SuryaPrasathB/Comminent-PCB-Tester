@@ -5,6 +5,7 @@ import time
 
 from PySide6.QtCore import QThread, Signal
 
+import random
 from src.core.db_utils import save_test_result
 from src.core.drivers.modbus_driver import ModbusRTU
 from src.core.safety_monitor import SafetyMonitor
@@ -12,7 +13,7 @@ from src.core.safety_monitor import SafetyMonitor
 from src.core.config import (
     SLAVE_DEVICES,
     VOLTAGE_TOLERANCE_PERCENT, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, CURRENT_TOLERANCE_PERCENT, STABILIZATION_TIME,
-    MIN_IMPEDANCE_MOHM, VLL_TO_TAP
+    MIN_IMPEDANCE_MOHM, VLL_TO_TAP, SIMULATION_MODE
 )
 
 from src.core.logger import logger
@@ -407,9 +408,12 @@ class TestRunner(QThread):
                 print("[TEST] Neutral CONNECTED → Reading Phase-to-Neutral Voltages")
                 logger.info("Neutral CONNECTED → Reading Phase-to-Neutral Voltages")
 
-                r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_N_VOLTAGE"], endian=endian)
-                y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_N_VOLTAGE"], endian=endian)
-                b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_N_VOLTAGE"], endian=endian)
+                if SIMULATION_MODE:
+                    r_v, y_v, b_v = (240.0 + random.uniform(-2, 2) for _ in range(3))
+                else:
+                    r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_N_VOLTAGE"], endian=endian)
+                    y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_N_VOLTAGE"], endian=endian)
+                    b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_N_VOLTAGE"], endian=endian)
 
                 print(f"[TEST] R-N Voltage = {r_v:.3f} V")
                 print(f"[TEST] Y-N Voltage = {y_v:.3f} V")
@@ -429,9 +433,12 @@ class TestRunner(QThread):
                 print("[TEST] Neutral NC → Reading Phase-to-Phase  1")
                 logger.info("Neutral NC → Reading Phase-to-Phase Voltages")
 
-                r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_Y_VOLTAGE"], endian=endian)
-                y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_B_VOLTAGE"], endian=endian)
-                b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_R_VOLTAGE"], endian=endian)
+                if SIMULATION_MODE:
+                    r_v, y_v, b_v = (415.0 + random.uniform(-5, 5) for _ in range(3))
+                else:
+                    r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_Y_VOLTAGE"], endian=endian)
+                    y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_B_VOLTAGE"], endian=endian)
+                    b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_R_VOLTAGE"], endian=endian)
 
                 print(f"[TEST] R-Y Voltage = {r_v:.3f} V")
                 print(f"[TEST] Y-B Voltage = {y_v:.3f} V")
@@ -463,6 +470,13 @@ class TestRunner(QThread):
 
             dc_results = {}
 
+            # Parse expected values for simulation
+            v_str = str(tc["v"].replace("V", "")).strip()
+            expected_v = float(v_str) if v_str != "NA" else 0.0
+
+            i_str = str(tc["i"].replace("A", "")).strip()
+            expected_i = float(i_str) if i_str != "NA" else 0.0
+
             for pcb in self.active_pcbs:
                 print(f"[TEST][PCB{pcb}] Reading DC meters")
 
@@ -475,19 +489,33 @@ class TestRunner(QThread):
                 dc_v = SLAVE_DEVICES[dc_v_key]
                 dc_i = SLAVE_DEVICES[dc_i_key]
 
-                # Voltage
-                measured_v = self.modbus.read_float(
-                    dc_v["slave_id"],
-                    dc_v["registers"]["DC_VOLTAGE"],
-                    endian=dc_v.get("endian", "ABCD")
-                )
+                if SIMULATION_MODE:
+                    # Determine fail condition (5% chance to fail)
+                    is_fail = random.random() < 0.05
 
-                # Current
-                measured_i = self.modbus.read_float(
-                    dc_i["slave_id"],
-                    dc_i["registers"]["DC_CURRENT"],
-                    endian=dc_i.get("endian", "ABCD")
-                )
+                    if is_fail:
+                        # Generate value well outside expected
+                        measured_v = expected_v + random.choice([-1.0, 1.0]) * random.uniform(1.0, 5.0)
+                        measured_i = expected_i + random.choice([-1.0, 1.0]) * random.uniform(0.5, 1.0)
+                    else:
+                        # Generate near expected values
+                        # Adjust noise based on expectations
+                        measured_v = expected_v + random.uniform(-0.1, 0.1) if expected_v > 0 else random.uniform(-0.2, 0.2)
+                        measured_i = expected_i + random.uniform(-0.05, 0.05) if expected_i > 0 else random.uniform(-0.1, 0.1)
+                else:
+                    # Voltage
+                    measured_v = self.modbus.read_float(
+                        dc_v["slave_id"],
+                        dc_v["registers"]["DC_VOLTAGE"],
+                        endian=dc_v.get("endian", "ABCD")
+                    )
+
+                    # Current
+                    measured_i = self.modbus.read_float(
+                        dc_i["slave_id"],
+                        dc_i["registers"]["DC_CURRENT"],
+                        endian=dc_i.get("endian", "ABCD")
+                    )
 
                 print(f"[TEST][PCB{pcb}] DC → V={measured_v:.3f}  I={measured_i:.3f}")
                 logger.info(f"[PCB{pcb}] DC → V={measured_v:.3f}, I={measured_i:.3f}")
@@ -728,11 +756,18 @@ class TestRunner(QThread):
             time.sleep(STABILIZATION_TIME)
 
             # Read impedance from correct meter
-            value = self.modbus.read_float(
-                slave,
-                imp["registers"][reg_key],
-                endian=endian
-            )
+            if SIMULATION_MODE:
+                # 5% chance to generate a failing impedance (< MIN_IMPEDANCE_MOHM)
+                if random.random() < 0.05:
+                    value = MIN_IMPEDANCE_MOHM * random.uniform(0.1, 0.9)
+                else:
+                    value = MIN_IMPEDANCE_MOHM + random.uniform(0.5, 5.0)
+            else:
+                value = self.modbus.read_float(
+                    slave,
+                    imp["registers"][reg_key],
+                    endian=endian
+                )
 
             impedance_results[phase] = value
             print(f"[PCB{pcb_index}] {phase}-N = {value:.3f} MΩ")

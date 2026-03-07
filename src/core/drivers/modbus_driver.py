@@ -5,13 +5,20 @@ import logging
 import threading
 
 from src.core.logger import logger
+from src.core.config import SIMULATION_MODE
 
 
 class ModbusRTU:
     def __init__(self, port, baudrate=9600, timeout=1):
-        logger.info(f"Initializing ModbusRTU | port={port}, baudrate={baudrate}, timeout={timeout}")
+        logger.info(f"Initializing ModbusRTU | port={port}, baudrate={baudrate}, timeout={timeout}, SIMULATION_MODE={SIMULATION_MODE}")
 
         self.lock = threading.RLock()
+        self.is_simulated = SIMULATION_MODE
+
+        if self.is_simulated:
+            logger.info(f"Simulation Mode: Bypassing Modbus RTU connection on {port}")
+            self.client = None
+            return
 
         self.client = ModbusSerialClient(
             port=port,
@@ -34,6 +41,9 @@ class ModbusRTU:
         with self.lock:
             logger.info(f"write_coil | slave={slave}, address={address}, value={value}")
 
+            if self.is_simulated:
+                return
+
             rq = self.client.write_coil(address, value, device_id=slave)
             if rq.isError():
                 logger.error(f"Write coil failed | slave={slave}, address={address}")
@@ -42,6 +52,9 @@ class ModbusRTU:
     def read_coils(self, slave, address, count=1):
         with self.lock:
             logger.info(f"read_coils | slave={slave}, address={address}, count={count}")
+
+            if self.is_simulated:
+                return [False] * count
 
             rr = self.client.read_coils(address, count=count, device_id=slave)
             if rr.isError():
@@ -55,6 +68,9 @@ class ModbusRTU:
             logger.info(
                 f"read_holding_registers | slave={slave}, address={address}, count={count}"
             )
+
+            if self.is_simulated:
+                return [0] * count
 
             rr = self.client.read_holding_registers(address, count=count, device_id=slave)
             if rr.isError():
@@ -103,7 +119,12 @@ class ModbusRTU:
 
     def close(self):
         with self.lock:
+            if self.is_simulated:
+                logger.info("Simulation Mode: Bypassing Modbus RTU close")
+                return
+
             logger.info("Closing Modbus RTU connection")
-            self.client.close()
+            if self.client:
+                self.client.close()
             logging.info("Modbus RTU closed")
             logger.info("Modbus RTU closed")

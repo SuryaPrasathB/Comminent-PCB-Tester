@@ -15,26 +15,29 @@ class TestCompletionDialog(QDialog):
             return
 
         loader = QUiLoader()
-        self.ui = loader.load(ui_file, self)
+        # Do not pass 'self' to loader.load() when the root widget in the .ui file
+        # is the same type as this class (QDialog), otherwise it creates a QDialog inside a QDialog.
+        # But since we inherit from QDialog, loading it into self might be tricky with QUiLoader.
+        # Let's extract its layout and set it to self.
+        ui_widget = loader.load(ui_file)
         ui_file.close()
 
-        # Add the loaded UI to this dialog's layout
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.ui)
+        # Steal the layout from the loaded widget
+        layout = ui_widget.layout()
+        # Reparent layout to self
         self.setLayout(layout)
 
         self.setWindowTitle("Test Completed")
         self.setFixedSize(600, 400)
 
-        # Bind UI elements
-        self.frame_pcb1 = self.ui.findChild(QFrame, "frame_pcb1")
-        self.frame_pcb2 = self.ui.findChild(QFrame, "frame_pcb2")
-        self.lbl_pcb1_sn = self.ui.findChild(QLabel, "lbl_pcb1_sn")
-        self.lbl_pcb2_sn = self.ui.findChild(QLabel, "lbl_pcb2_sn")
-        self.lbl_pcb1_status = self.ui.findChild(QLabel, "lbl_pcb1_status")
-        self.lbl_pcb2_status = self.ui.findChild(QLabel, "lbl_pcb2_status")
-        self.btn_close = self.ui.findChild(QPushButton, "btn_close")
+        # Bind UI elements using self since the widgets are now children of self's layout
+        self.frame_pcb1 = self.findChild(QFrame, "frame_pcb1")
+        self.frame_pcb2 = self.findChild(QFrame, "frame_pcb2")
+        self.lbl_pcb1_sn = self.findChild(QLabel, "lbl_pcb1_sn")
+        self.lbl_pcb2_sn = self.findChild(QLabel, "lbl_pcb2_sn")
+        self.lbl_pcb1_status = self.findChild(QLabel, "lbl_pcb1_status")
+        self.lbl_pcb2_status = self.findChild(QLabel, "lbl_pcb2_status")
+        self.btn_close = self.findChild(QPushButton, "btn_close")
 
         # Connect close button
         self.btn_close.clicked.connect(self.accept)

@@ -2,8 +2,9 @@
 import serial
 import time
 
-from src.core.config import SERIAL_SETTINGS, SLAVE_DEVICES
+from src.core.config import SERIAL_SETTINGS, SLAVE_DEVICES, SIMULATION_MODE
 from src.core.logger import logger
+import random
 
 
 class RawSerial:
@@ -15,8 +16,14 @@ class RawSerial:
 
     def __init__(self, port: str, baudrate: int = None):
         logger.info(f"Initializing RawSerial | port={port}")
+        self.is_simulated = SIMULATION_MODE
 
         print(f"[RAW] Opening RAW serial port: {port}")
+
+        if self.is_simulated:
+            logger.info(f"Simulation Mode: Bypassing RAW serial port opening on {port}")
+            self.ser = None
+            return
 
         # Use provided baudrate or fall back to config
         effective_baud = baudrate if baudrate else SERIAL_SETTINGS["baudrate"]
@@ -86,6 +93,12 @@ class RawSerial:
             f"RAW write_read | tx_len={len(tx_bytes)}, rx_len={rx_len}, delay={delay}"
         )
 
+        if self.is_simulated:
+            logger.info("Simulation Mode: Returning mock QR code")
+            # Generate a random mock QR to mimic typical scanning
+            rand_id = random.randint(1000, 9999)
+            return f"SIM_QR_{rand_id}".encode('utf-8')
+
         if not self.ser or not self.ser.is_open:
             logger.error("RAW serial not open")
             raise RuntimeError("RAW serial not open")
@@ -121,6 +134,10 @@ class RawSerial:
 
     # -------------------------------------------------
     def close(self):
+        if self.is_simulated:
+            logger.info("Simulation Mode: Bypassing RAW serial port close")
+            return
+
         if self.ser and self.ser.is_open:
             print("[RAW] Closing RAW serial port")
             logger.info("Closing RAW serial port")

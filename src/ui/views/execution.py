@@ -11,7 +11,7 @@ from serial.tools import list_ports
 from src.core.db_utils import load_projects, load_test_cases
 from src.core.test_runner import TestRunner
 from src.core.drivers.raw_serial_driver import RawSerial
-from src.core.config import SLAVE_DEVICES
+from src.core.config import SLAVE_DEVICES, SIMULATION_MODE
 
 from src.core.logger import logger
 from src.ui.icons import IconHelper
@@ -223,6 +223,9 @@ class ExecutionView(QWidget):
 
         for p in list_ports.comports():
             self.cmb_comPort.addItem(p.device)
+
+        if SIMULATION_MODE:
+            self.cmb_comPort.addItem("SIM_COM")
 
         self.cmb_comPort.blockSignals(False)
     # =========================================================================
@@ -730,6 +733,10 @@ class ExecutionView(QWidget):
         mb = None
         try:
             print(f"[SAFETY] Pre-check on {com_port}")
+
+            if SIMULATION_MODE and com_port == "SIM_COM":
+                return None
+
             from src.core.drivers.modbus_driver import ModbusRTU
             
             # Temporary connection
@@ -807,6 +814,9 @@ class ExecutionView(QWidget):
 
         if self.poller and self.poller.isRunning(): return
             
+        if SIMULATION_MODE and com_port == "SIM_COM":
+            return
+
         try:
             plc = SLAVE_DEVICES.get("PLC")
             if not plc: return
