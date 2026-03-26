@@ -8,7 +8,7 @@ from datetime import datetime
 
 from src.core.logger import logger
 
-SIMULATION_MODE = True
+SIMULATION_MODE = False
 
 # =====================================================
 # SERIAL / MODBUS COMMUNICATION SETTINGS

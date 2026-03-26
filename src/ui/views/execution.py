@@ -704,11 +704,15 @@ class ExecutionView(QWidget):
             # --------------------------
 
             # Show the new Test Completion popup
-            if popup_results:
-                dialog = TestCompletionDialog(popup_results, self.ui)
-                dialog.exec_()
-            else:
-                QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.\nReports generated.")
+            # Do not display if running a single test (Run Selected)
+            is_run_single = getattr(self.runner, 'run_single', False) if self.runner else False
+            
+            if not is_run_single:
+                if popup_results:
+                    dialog = TestCompletionDialog(popup_results, self.ui)
+                    dialog.exec_()
+                else:
+                    QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.\nReports generated.")
 
             self._start_polling()
 

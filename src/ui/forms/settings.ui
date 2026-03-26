@@ -162,24 +162,7 @@
              <number>2</number>
             </property>
             <property name="maximum">
-             <double>999.99</double>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QLabel" name="label_curr_tol">
-            <property name="text">
-             <string>Current Tolerance (%):</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QDoubleSpinBox" name="spinBox_curr_tol">
-            <property name="decimals">
-             <number>2</number>
-            </property>
-            <property name="maximum">
-             <double>100.0</double>
+             <double>999.990000000000009</double>
             </property>
            </widget>
           </item>
@@ -196,7 +179,7 @@
              <number>2</number>
             </property>
             <property name="maximum">
-             <double>99.99</double>
+             <double>99.989999999999995</double>
             </property>
            </widget>
           </item>
@@ -239,7 +222,7 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
@@ -249,7 +232,7 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
@@ -266,7 +249,7 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
@@ -276,7 +259,7 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
@@ -293,7 +276,7 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
@@ -303,7 +286,7 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
@@ -320,7 +303,7 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
@@ -330,11 +313,28 @@
                 <number>2</number>
                </property>
                <property name="maximum">
-                <double>99.99</double>
+                <double>99.989999999999995</double>
                </property>
               </widget>
              </item>
             </layout>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="label_curr_tol">
+            <property name="text">
+             <string>Current Tolerance (%):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QDoubleSpinBox" name="spinBox_curr_tol">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="maximum">
+             <double>100.000000000000000</double>
+            </property>
            </widget>
           </item>
          </layout>

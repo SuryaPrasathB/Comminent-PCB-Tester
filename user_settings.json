@@ -20,5 +20,28 @@
             "measured_i": "J9",
             "result": "K9"
         }
+    },
+    "test_parameters": {
+        "stabilization_time": 2.0,
+        "current_tolerance_percent": 20.0,
+        "zero_current_limit": 0.2,
+        "limit_table": {
+            "0.0": {
+                "v_upper": 5.75,
+                "v_lower": 5.4
+            },
+            "0.5": {
+                "v_upper": 5.75,
+                "v_lower": 5.4
+            },
+            "1.25": {
+                "v_upper": 5.75,
+                "v_lower": 5.3
+            },
+            "2.5": {
+                "v_upper": 5.75,
+                "v_lower": 5.1
+            }
+        }
     }
 }
