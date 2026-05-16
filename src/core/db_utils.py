@@ -331,7 +331,6 @@ def save_test_result(project_name, pcb_serial, sn, data):
     cur = conn.cursor()
     try:
         print(f"[DB] Saving test result → Project={project_name}, PCB={pcb_serial}, SN={sn}")
-        logger.error("save_test_result failed: DB connection failed")
 
         cur.execute("""
             INSERT INTO test_results

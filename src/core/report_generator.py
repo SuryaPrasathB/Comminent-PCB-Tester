@@ -45,13 +45,24 @@ class ReportGenerator:
             wb = openpyxl.load_workbook(template_path)
             ws = wb.active # Assume first sheet
 
+            from openpyxl.cell.cell import MergedCell
+            
             # Helper to set cell value safely
             def set_cell(cell_ref, value):
-                if cell_ref:
-                    try:
-                        ws[cell_ref] = value
-                    except Exception as e:
-                        logger.error(f"Error setting cell {cell_ref}: {e}")
+                if not cell_ref:
+                    return
+                try:
+                    cell = ws[cell_ref]
+                    if isinstance(cell, MergedCell):
+                        # If it's a merged cell, find the master cell (top-left)
+                        for merged_range in ws.merged_cells.ranges:
+                            if cell_ref in merged_range:
+                                ws.cell(row=merged_range.min_row, column=merged_range.min_col).value = value
+                                break
+                    else:
+                        cell.value = value
+                except Exception as e:
+                    logger.error(f"Error setting cell {cell_ref}: {e}")
 
             # Fill Single Values
             set_cell(mappings.get("pcb_serial"), pcb_serial)

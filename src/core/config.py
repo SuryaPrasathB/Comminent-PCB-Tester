@@ -4,6 +4,7 @@
 # =====================================================
 
 import logging
+import os
 from datetime import datetime
 
 from src.core.logger import logger
@@ -19,15 +20,14 @@ SERIAL_SETTINGS = {
     "parity": "N",  # 'N', 'E', 'O'
     "stopbits": 1,
     "bytesize": 8,
-    "timeout": 1.0,  # seconds
-    "exclusive": True  # IMPORTANT for Windows
+    "timeout": 2.0,  # seconds
 }
 
 logger.info("SERIAL_SETTINGS loaded")
 
 NEUTRAL_OPTIONS  = ["NC", "C"]
 #VOLTAGE_TAPPINGS = ["NC", "138V", "144V", "240V", "265V", "500V", "510V", "520V", "530V"]
-VOLTAGE_TAPPINGS = ["530V", "520V", "510V", "500V", "460V", "240V", "144V", "138V", "NC"]
+VOLTAGE_TAPPINGS = ["530V", "520V", "510V", "500V", "450V", "240V", "144V", "138V", "NC"]
 CURRENT_TAPPINGS = ["0A", "0.5A", "1.25A", "2.5A"]
 
 VLL_TO_TAP = {
@@ -35,7 +35,7 @@ VLL_TO_TAP = {
     "520V": "300",
     "510V": "295",
     "500V": "288",
-    "460V": "265",
+    "450V": "265",
     "240V": "138",
 }
 
@@ -384,7 +384,8 @@ DB_CONFIG = {
     "user": "root",
     "password": "lscontrols",
     "database": "pcb_tester",
-    "raise_on_warnings": True
+    "raise_on_warnings": True,
+    "connect_timeout": 5
 }
 logger.info(f"Database configuration loaded | DB={DB_CONFIG['database']}")
 
@@ -453,13 +454,13 @@ default_test_cases = [
     {"sn": 49, "desc": "Working under voltage variations", "r": "NC", "y": "NC", "b": "144V", "n": "C", "v": "5.6V",  "i": "2.5A"},
     
     {"sn": 50, "desc": "Working at higher voltage condition", "r": "500V", "y": "500V", "b": "500V", "n": "NC", "v": "0V",  "i": "0A"},
-    {"sn": 51, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5.6V",  "i": "1.25A"},
+    {"sn": 51, "desc": "Working at higher voltage condition", "r": "450V", "y": "450V", "b": "450V", "n": "NC", "v": "5.6V",  "i": "1.25A"},
     {"sn": 52, "desc": "Working at higher voltage condition", "r": "510V", "y": "510V", "b": "510V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 53, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5.6V", "i": "1.25A"},
+    {"sn": 53, "desc": "Working at higher voltage condition", "r": "450V", "y": "450V", "b": "450V", "n": "NC", "v": "5.6V", "i": "1.25A"},
     {"sn": 54, "desc": "Working at higher voltage condition", "r": "520V", "y": "520V", "b": "520V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 55, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5.6V", "i": "1.25A"},
+    {"sn": 55, "desc": "Working at higher voltage condition", "r": "450V", "y": "450V", "b": "450V", "n": "NC", "v": "5.6V", "i": "1.25A"},
     {"sn": 56, "desc": "Working at higher voltage condition", "r": "530V", "y": "530V", "b": "530V", "n": "NC", "v": "0V", "i": "0A"},
-    {"sn": 57, "desc": "Working at higher voltage condition", "r": "460V", "y": "460V", "b": "460V", "n": "NC", "v": "5.6V", "i": "1.25A"},
+    {"sn": 57, "desc": "Working at higher voltage condition", "r": "450V", "y": "450V", "b": "450V", "n": "NC", "v": "5.6V", "i": "1.25A"},
 
 ]
 
@@ -468,7 +469,9 @@ default_test_cases = [
 # LOGGING
 # =====================================================
 def setup_logging():
-    log_filename = f"logs/test_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    from src.core.paths import get_log_dir
+    log_dir = get_log_dir()
+    log_filename = os.path.join(log_dir, f"test_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
     logging.basicConfig(
         filename=log_filename,
         level=logging.INFO,

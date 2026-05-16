@@ -13,9 +13,8 @@ from src.core.logger import logger
 from src.ui.views.execution import ExecutionView
 from src.ui.views.project_config import ProjectConfigView
 from src.ui.views.results import ResultsView
-from src.ui.views.debug import DebugView
-from src.ui.views.logs import LogsView
 from src.ui.views.settings import SettingsView
+from src.ui.views.debug import DebugView
 
 class MainWindow(QMainWindow):
     def __init__(self, role):
@@ -119,9 +118,14 @@ class MainWindow(QMainWindow):
         self.btn_proj = self.findChild(QPushButton, "btn_nav_project")
         self.btn_res = self.findChild(QPushButton, "btn_nav_results")
         self.btn_debug = self.findChild(QPushButton, "btn_nav_debug")
-        self.btn_logs = self.findChild(QPushButton, "btn_nav_logs")
         self.btn_settings = self.findChild(QPushButton, "btn_nav_settings")
         self.btn_logout = self.findChild(QPushButton, "btn_logout")
+
+        # Completely remove the logs button from the UI file
+        btn_logs = self.findChild(QPushButton, "btn_nav_logs")
+        if btn_logs:
+            btn_logs.setVisible(False)
+            btn_logs.deleteLater()
 
         # Bind Sidebar Header Components
         self.label_logo_icon = self.findChild(QLabel, "label_logo_icon")
@@ -129,7 +133,7 @@ class MainWindow(QMainWindow):
 
         self.sidebar_buttons = [
             self.btn_exec, self.btn_proj, self.btn_res,
-            self.btn_debug, self.btn_logs, self.btn_settings,
+            self.btn_debug, self.btn_settings,
             self.btn_logout
         ]
 
@@ -144,7 +148,6 @@ class MainWindow(QMainWindow):
         # Role Management
         if self.role.lower() != "admin":
             if self.btn_debug: self.btn_debug.setVisible(False)
-            if self.btn_logs: self.btn_logs.setVisible(False)
 
         # Smart Sidebar Setup
         if self.btn_toggle_sidebar:
@@ -167,7 +170,6 @@ class MainWindow(QMainWindow):
         IconHelper.apply_icon(self.btn_proj, "project", "white")
         IconHelper.apply_icon(self.btn_res, "results", "white")
         IconHelper.apply_icon(self.btn_debug, "debug", "white")
-        IconHelper.apply_icon(self.btn_logs, "logs", "white")
         IconHelper.apply_icon(self.btn_settings, "settings", "white")
         IconHelper.apply_icon(self.btn_logout, "logout", "white")
     # -------------------------------------------------
@@ -177,7 +179,6 @@ class MainWindow(QMainWindow):
         self.btn_proj.clicked.connect(lambda: self.navigate("project"))
         self.btn_res.clicked.connect(lambda: self.navigate("results"))
         self.btn_debug.clicked.connect(lambda: self.navigate("debug"))
-        self.btn_logs.clicked.connect(lambda: self.navigate("logs"))
         self.btn_settings.clicked.connect(lambda: self.navigate("settings"))
 
         self.btn_logout.clicked.connect(self.on_logout)
@@ -185,9 +186,6 @@ class MainWindow(QMainWindow):
 
         # Initialize Views storage
         self.views = {}
-
-        # Eager load logs so they capture everything
-        self._get_or_create_view("logs")
 
         # Load Default
         self.navigate("execution")
@@ -211,8 +209,6 @@ class MainWindow(QMainWindow):
             view = ResultsView()
         elif page_name == "debug":
             view = DebugView()
-        elif page_name == "logs":
-            view = LogsView()
         elif page_name == "settings":
             view = SettingsView()
 
@@ -232,7 +228,6 @@ class MainWindow(QMainWindow):
             "project": "Project Configuration",
             "results": "Test Results & History",
             "debug": "Hardware Debugging",
-            "logs": "System Logs",
             "settings": "System Settings"
         }
         self.lbl_title.setText(titles.get(page_name, "PRO-TRACE"))
@@ -263,7 +258,6 @@ class MainWindow(QMainWindow):
             "project": self.btn_proj,
             "results": self.btn_res,
             "debug": self.btn_debug,
-            "logs": self.btn_logs,
             "settings": self.btn_settings
         }
 
@@ -334,11 +328,51 @@ class MainWindow(QMainWindow):
                 if original is not None:
                     btn.setText(original)
     # -------------------------------------------------
-    def on_tab_changed(self, index):
-        current_widget = self.tab_widget.widget(index)
+    def closeEvent(self, event):
+        """
+        Explicitly stop all background tasks and threads when the main window is closed.
+        """
+        logger.info("MainWindow closeEvent triggered. Cleaning up...")
+        
+        # 1. Stop Report Uploader
+        try:
+            from src.core.report_uploader import ReportUploader
+            ReportUploader().stop()
+            logger.info("ReportUploader stopped")
+        except: pass
 
-        # ✅ Only when user SWITCHES to Execution tab
-        if current_widget == self.tab_execution:
-            print("[MAIN] Execution tab activated (real switch)")
-            logger.info("Execution tab activated")
-            self.execution_controller.load_selected_project()
+        # 2. Stop all views (Threads, Pollers)
+        for name, view in self.views.items():
+            try:
+                # If view has a closeEvent or stop method, call it
+                if hasattr(view, "closeEvent"):
+                    # Create a dummy event if needed, or just call the stop logic
+                    if hasattr(view, "_stop_polling"):
+                        view._stop_polling()
+                    if hasattr(view, "stop_tests"):
+                        view.stop_tests()
+                        
+                    # CRITICAL: Wait for background threads to finish before destroying C++ objects
+                    if hasattr(view, "runner") and view.runner and view.runner.isRunning():
+                        import time
+                        from PySide6.QtWidgets import QApplication
+                        logger.info(f"Waiting for TestRunner in {name} to exit gracefully...")
+                        timeout = time.time() + 10.0  # Allow 10 seconds for hardware shutdown
+                        while view.runner.isRunning() and time.time() < timeout:
+                            QApplication.processEvents()
+                            time.sleep(0.1)
+                        
+                        if view.runner.isRunning():
+                            logger.warning(f"TestRunner in {name} did not exit cleanly. Leaving to OS.")
+                logger.info(f"Cleaned up view: {name}")
+            except Exception as e:
+                logger.warning(f"Error cleaning up view {name}: {e}")
+
+        # 3. Final Modbus Cleanup
+        try:
+            from src.core.drivers.modbus_manager import ModbusManager
+            ModbusManager.close_all()
+        except: pass
+
+        super().closeEvent(event)
+        logger.info("MainWindow closed successfully")

@@ -2,14 +2,15 @@ import json
 import os
 from src.core.logger import logger
 from src.ui.theme import AppTheme
+from src.core.paths import get_settings_path, get_report_export_dir
 
-SETTINGS_FILE = "user_settings.json"
+SETTINGS_FILE = get_settings_path()
 
 DEFAULT_SETTINGS = {
     "theme": AppTheme.LIGHT,
     "report_export": {
         "template_path": "Report Export/template/active_template.xlsx",
-        "export_path": "Report Export",
+        "export_path": get_report_export_dir(),
         "mappings": {
             "project_name": "",
             "pcb_serial": "",

@@ -1,34 +1,26 @@
 import os
 import inspect
+import threading
 from datetime import datetime
 
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
-from PySide6.QtWidgets import QWidget, QVBoxLayout
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice
+
 
 
 # =====================================================
 # CENTRAL LOGGER
 # =====================================================
-class AppLogger(QObject):
+class AppLogger:
     """
     Central application logger
     - New log file per app start
     - Dynamic Class : Method name
-    - Emits logs to UI
     """
 
-    log_signal = Signal(str)
-    status_signal = Signal(str)
-
-    def __init__(self, log_dir="logs", app_name="pcb_tester"):
-        super().__init__()
-
-        base_dir = os.getcwd()
-        self.log_dir = os.path.join(base_dir, log_dir)
-        os.makedirs(self.log_dir, exist_ok=True)
+    def __init__(self, app_name="pcb_tester"):
+        from src.core.paths import get_log_dir
+        self.log_dir = get_log_dir()
+        
+        self.lock = threading.Lock()
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.log_file = os.path.join(
@@ -36,7 +28,7 @@ class AppLogger(QObject):
         )
         self.history = []
 
-        self.info("AppLogger initialized")
+        self.info(f"AppLogger initialized at {self.log_dir}")
 
     # -------------------------------------------------
     def _get_context(self):
@@ -65,20 +57,15 @@ class AppLogger(QObject):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         full_line = f"[{timestamp}] [{level}] {cls} : {func} : {message}"
 
-        try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(full_line + "\n")
-        except Exception:
-            pass
+        with self.lock:
+            try:
+                with open(self.log_file, "a", encoding="utf-8") as f:
+                    f.write(full_line + "\n")
+                    f.flush()  # Force write to disk
+            except Exception:
+                pass
 
         self.history.append(full_line)
-
-        # Full log (Logs tab)
-        self.log_signal.emit(full_line)
-
-        # One-line status (Main UI bottom)
-        #status_line = f"{cls} : {func} : {message}"
-        self.status_signal.emit(message)
 
     # -------------------------------------------------
     def get_history(self):

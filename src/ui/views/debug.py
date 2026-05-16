@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QWidget, QMessageBox, QComboBox, QVBoxLayout
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, QEvent
 
-from src.core.drivers.modbus_driver import ModbusRTU
+from src.core.drivers.modbus_manager import ModbusManager
 from src.core.drivers.raw_serial_driver import RawSerial
 from src.core.config import SLAVE_DEVICES, VOLTAGE_TAPPINGS, CURRENT_TAPPINGS, NEUTRAL_OPTIONS, VLL_TO_TAP
 from src.core.logger import logger
@@ -170,6 +170,46 @@ class DebugView(QWidget):
         # Rescan COM on click
         self.cmb_com.installEventFilter(self)
 
+        # ---------------- DIAGNOSTIC TOOLS ----------------
+        self._add_diagnostic_tools()
+
+    def _add_diagnostic_tools(self):
+        """Adds extra debugging buttons programmatically to the layout."""
+        from PySide6.QtWidgets import QHBoxLayout, QPushButton
+        
+        diag_layout = QHBoxLayout()
+        
+        self.btn_sim_crash = QPushButton("💥 SIMULATE CRASH")
+        self.btn_sim_crash.setStyleSheet("background-color: #fce4ec; color: #880e4f; font-weight: bold; padding: 10px;")
+        self.btn_sim_crash.clicked.connect(self._trigger_crash)
+        
+        self.btn_toggle_sim = QPushButton("🤖 TOGGLE SIMULATION")
+        self.btn_toggle_sim.setStyleSheet("background-color: #e3f2fd; color: #0d47a1; font-weight: bold; padding: 10px;")
+        self.btn_toggle_sim.clicked.connect(self._toggle_simulation)
+        
+        diag_layout.addWidget(self.btn_sim_crash)
+        diag_layout.addWidget(self.btn_toggle_sim)
+        
+        # Add to the end of the container layout
+        self.ui.layout().addLayout(diag_layout)
+
+    def _trigger_crash(self):
+        reply = QMessageBox.question(
+            self, "Confirm Crash", 
+            "This will trigger an unhandled exception to test the crash handler. The application WILL close.\n\nContinue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            logger.info("User triggered intentional crash for testing.")
+            raise RuntimeError("INTENTIONAL DIAGNOSTIC CRASH: Testing crash log generation.")
+
+    def _toggle_simulation(self):
+        from src.core import config
+        config.SIMULATION_MODE = not config.SIMULATION_MODE
+        mode_str = "ENABLED" if config.SIMULATION_MODE else "DISABLED"
+        logger.info(f"Simulation Mode toggled to: {mode_str}")
+        QMessageBox.information(self, "Mode Switched", f"Simulation Mode is now {mode_str}.\n(Hardware communication will be {'bypassed' if config.SIMULATION_MODE else 'restored'})")
+
     # -------------------------------------------------
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_apply, "check", "white")
@@ -260,11 +300,8 @@ class DebugView(QWidget):
         com = self.cmb_com.currentText()
         if com.startswith("--"):
             raise RuntimeError("COM not selected")
-        if self.modbus and self.current_com == com:
-            return self.modbus
-        if self.modbus:
-            self.modbus.close()
-        self.modbus = ModbusRTU(port=com)
+        
+        self.modbus = ModbusManager.get_client(port=com)
         self.current_com = com
         return self.modbus
 
@@ -523,19 +560,21 @@ class DebugView(QWidget):
 
     # -------------------------------------------------
     def read_qr_code(self, scanner_name, field):
-        raw = None
         try:
             com = self.cmb_com.currentText()
             if com.startswith("--"): return
             qr = SLAVE_DEVICES[scanner_name]
-            raw = RawSerial(port=com, baudrate=115200)
-            rx = raw.write_read(qr["read_cmd"])
-            field.setText(rx.decode(errors="ignore").strip())
+            
+            mb = ModbusManager.get_client(port=com)
+            rx = mb.send_raw_receive(qr["read_cmd"], delay=0.5, baudrate=115200)
+            
+            if rx:
+                field.setText(rx.decode(errors="ignore").strip())
+            else:
+                field.setText("TIMEOUT")
         except Exception as e:
             logger.error(f"QR Error ({scanner_name}): {e}")
-        finally:
-            if raw:
-                raw.close()
+            field.setText("ERROR")
 
     # -------------------------------------------------
     def read_modbus(self, key, field):
@@ -558,10 +597,5 @@ class DebugView(QWidget):
 
     # -------------------------------------------------
     def _close_modbus(self):
-        if self.modbus:
-            try:
-                self.modbus.close()
-            except Exception:
-                pass
-            self.modbus = None
-            self.current_com = None
+        # We don't close the shared modbus client here anymore
+        pass

@@ -1,5 +1,6 @@
 import os
 import time
+import threading
 from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QVBoxLayout, QHeaderView
 )
@@ -22,58 +23,53 @@ class StartPoller(QThread):
 
     def __init__(self, port, slave_id, coil_addr):
         super().__init__()
+        self.setObjectName("StartPoller")
         self.port = port
         self.slave_id = slave_id
         self.coil_addr = coil_addr
         self.running = True
         self.client = None
+        self.t_name = "Unknown"
 
     def run(self):
+        threading.current_thread().name = "StartPoller"
+        self.t_name = threading.current_thread().name
+        logger.info(f"StartPoller [{self.t_name}] : STARTED on {self.port}")
         try:
-            from src.core.drivers.modbus_driver import ModbusRTU
-            # Reduced timeout for responsiveness
-            self.client = ModbusRTU(self.port, timeout=0.5)
+            from src.core.drivers.modbus_manager import ModbusManager
+            self.client = ModbusManager.get_client(self.port, timeout=0.8)
             
             while self.running:
                 try:
-                    # check if running became False during sleep
                     if not self.running:
                         break
 
+                    # Use a local check to avoid race conditions during stop
                     coils = self.client.read_coils(self.slave_id, self.coil_addr, 1)
                     
                     if coils and coils[0] is True:
                         if not self.running: break
+                        logger.info(f"StartPoller [{self.t_name}] : Coil {self.coil_addr} detected ACTIVE")
                         self.start_signal.emit()
                         self.running = False
                         break
 
-                except Exception:
+                except Exception as e:
+                    # Log error periodically if desired, but don't spam
                     pass
 
-                self.msleep(100)
+                # Increased sleep for bus stability
+                self.msleep(1000) 
 
-            self.client.close()
-            
         except Exception as e:
-            logger.error(f"StartPoller failed: {e}")
+            logger.error(f"StartPoller [{self.t_name}] failed: {e}")
         finally:
-            if self.client:
-                try:
-                    self.client.close()
-                except:
-                    pass
+            logger.info(f"StartPoller [{self.t_name}] : EXITED")
 
     def stop(self):
+        logger.info(f"StartPoller [{self.t_name}] : Stop requested")
         self.running = False
-        # Optimize stop: Force Close to interrupt any blocking read
-        if self.client:
-            try:
-                if hasattr(self.client, 'client'):
-                    self.client.client.close()
-            except:
-                pass
-        self.wait()
+
 
 class ExecutionView(QWidget):
     def __init__(self, parent_stack=None):
@@ -320,28 +316,39 @@ class ExecutionView(QWidget):
 
         # =====================================================
 
-        # SAFETY PRE-CHECK
         # =====================================================
-        safety_err = self.check_safety_pre_start(com_port)
-        if safety_err:
-            self.show_safety_popup(safety_err)
-            return
-
+        # SAFETY PRE-CHECK & QR READ
         # =====================================================
-        # AUTO READ BOTH PCB SERIAL NUMBERS
-        # =====================================================
-        sn1 = self._read_qr("QR_SCANNER_1", com_port)
-        sn2 = self._read_qr("QR_SCANNER_2", com_port)
+        try:
+            safety_err = self.check_safety_pre_start(com_port)
+            if safety_err:
+                self.show_safety_popup(safety_err)
+                return
 
-        fail_msgs = []
-        if not sn1:
-            fail_msgs.append("PCB-1 QR Scanner failed")
-        if not sn2:
-            fail_msgs.append("PCB-2 QR Scanner failed")
+            # AUTO READ BOTH PCB SERIAL NUMBERS
+            sn1 = self._read_qr("QR_SCANNER_1", com_port)
+            sn2 = self._read_qr("QR_SCANNER_2", com_port)
 
-        if fail_msgs:
-            logger.warning("QR read failed")
-            QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs))
+            fail_msgs = []
+            if not sn1: fail_msgs.append("PCB-1 QR Scanner failed")
+            if not sn2: fail_msgs.append("PCB-2 QR Scanner failed")
+
+            if fail_msgs:
+                logger.warning("QR read failed")
+                QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs) + "\n\nTip: Check cables or try 'Reset Bus' if hardware is unresponsive.")
+                return
+
+        except Exception as e:
+            logger.error(f"Hardware communication error during start: {e}")
+            res = QMessageBox.question(
+                self, "Hardware Error", 
+                f"Hardware is not responding correctly:\n{e}\n\nWould you like to RESET the bus connection?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if res == QMessageBox.Yes:
+                from src.core.drivers.modbus_manager import ModbusManager
+                ModbusManager.clear_client(com_port)
+                QMessageBox.information(self, "Reset", "Bus connection cleared. Please try starting again.")
             return
 
         # Update UI
@@ -467,18 +474,18 @@ class ExecutionView(QWidget):
 
     # -------------------------------------------------
     def _read_qr(self, device_key, com_port):
-        raw = None
         try:
             qr = SLAVE_DEVICES[device_key]
-
             print(f"[QR] Reading {qr['display_name']} → CMD {qr['read_cmd']}")
 
-            raw = RawSerial(port=com_port, baudrate=115200)
-            data = raw.write_read(qr["read_cmd"])
+            from src.core.drivers.modbus_manager import ModbusManager
+            mb = ModbusManager.get_client(port=com_port)
+            data = mb.send_raw_receive(qr["read_cmd"], delay=0.5, baudrate=115200)
             
-            serial = data.decode(errors="ignore").strip()
-            #serial ="QR_CODE"
+            if not data:
+                 return None
 
+            serial = data.decode(errors="ignore").strip()
             print(f"[QR] {qr['display_name']} → {serial}")
 
             if serial == "" or serial.upper() == "NG":
@@ -489,9 +496,6 @@ class ExecutionView(QWidget):
         except Exception as e:
             logger.error(f"{device_key} read failed: {e}")
             return None
-        finally:
-            if raw:
-                raw.close()
 
     # -------------------------------------------------
 
@@ -532,19 +536,27 @@ class ExecutionView(QWidget):
                 QMessageBox.warning(self, "Error", "Select COM port to reset PLC")
                 return
 
-            from src.core.drivers.modbus_driver import ModbusRTU
+            from src.core.drivers.modbus_manager import ModbusManager
 
-            mb = ModbusRTU(port=com_port)
+            mb = ModbusManager.get_client(port=com_port)
 
             plc = SLAVE_DEVICES["PLC"]
             slave_id = plc["slave_id"]
 
-            print("[RESET] Turning OFF all PLC coils")
+            logger.info("Performing batch relay reset (Addresses 1-31)")
+            try:
+                # Reset relays 1-31 in one go
+                reset_vals = [False] * 31
+                mb.write_coils(slave_id, 1, reset_vals)
+            except Exception as batch_e:
+                logger.warning(f"Batch reset failed, falling back to sequential: {batch_e}")
+                for name, addr in plc["coils"].items():
+                    try:
+                        if addr <= 31:
+                            mb.write_coil(slave_id, addr, False)
+                    except Exception: pass
 
-            for name, addr in plc["coils"].items():
-                mb.write_coil(slave_id, addr, False)
-
-            mb.close()
+            # mb.close() # DO NOT CLOSE SHARED CLIENT
 
             logger.info("All PLC coils reset successfully")
             QMessageBox.information(self, "Done", "Tables and PLC relays reset.")
@@ -741,26 +753,32 @@ class ExecutionView(QWidget):
             if SIMULATION_MODE and com_port == "SIM_COM":
                 return None
 
-            from src.core.drivers.modbus_driver import ModbusRTU
+            from src.core.drivers.modbus_manager import ModbusManager
             
             # Temporary connection
-            mb = ModbusRTU(port=com_port)
+            mb = ModbusManager.get_client(port=com_port)
             plc = SLAVE_DEVICES["PLC"]
             slave = plc["slave_id"]
 
-            # Check PCB
-            pcb = mb.read_coils(slave, plc["coils"]["PCB"], 1)
-            if not pcb or not pcb[0]:
+            # Batch read coils 102, 103, 104
+            # 102: PCB, 103: CURTAIN, 104: ESTOP
+            # Start at 102, count 3
+            bits = mb.read_coils(slave, 102, 3)
+            
+            if not bits or len(bits) < 3:
+                return "Safety Sensors Read Failed"
+
+            pcb_active = bits[0]      # 102
+            curtain_active = bits[1]  # 103
+            estop_active = bits[2]    # 104
+
+            if not pcb_active:
                 return "PCB Not Placed"
             
-            # Check E-Stop
-            estop = mb.read_coils(slave, plc["coils"]["EMERGENCY_STOP"], 1)
-            if estop and estop[0]:
+            if estop_active:
                 return "Emergency Stop Active"
                 
-            # Check Curtain
-            curtain = mb.read_coils(slave, plc["coils"]["CURTAIN_SENSOR"], 1)
-            if curtain and curtain[0]:
+            if curtain_active:
                 return "Curtain Sensor Active"
             
             return None
@@ -769,8 +787,8 @@ class ExecutionView(QWidget):
             logger.error(f"Safety pre-check failed: {e}")
             return f"Safety Check Error: {e}"
         finally:
-            if mb:
-                mb.close()
+            # if mb: mb.close() # DO NOT CLOSE SHARED CLIENT
+            pass
 
     def show_safety_popup(self, reason):
         msg = QMessageBox(self)
@@ -816,7 +834,12 @@ class ExecutionView(QWidget):
             self._stop_polling()
             return
 
-        if self.poller and self.poller.isRunning(): return
+        if self.poller:
+            if self.poller.isRunning():
+                return
+            else:
+                # Thread object exists but not running - cleanup
+                self.poller = None
             
         if SIMULATION_MODE and com_port == "SIM_COM":
             return
@@ -830,7 +853,6 @@ class ExecutionView(QWidget):
             
             if not start_coil: return
             
-            logger.info(f"Starting Poller on {com_port}")
             self.poller = StartPoller(com_port, slave_id, start_coil)
             self.poller.start_signal.connect(self._handle_start_from_coil)
             self.poller.start()
@@ -845,6 +867,7 @@ class ExecutionView(QWidget):
         except Exception as e:
             logger.error(f"Cannot start poller: {e}")
 
+
     def _stop_polling(self):
         self.blink_timer.stop()
         
@@ -858,39 +881,41 @@ class ExecutionView(QWidget):
 
         if self.poller:
             self.poller.stop()
+            import time
+            from PySide6.QtWidgets import QApplication
+            timeout = time.time() + 5.0
+            while self.poller.isRunning() and time.time() < timeout:
+                QApplication.processEvents()
+                time.sleep(0.1)
+            if self.poller.isRunning():
+                logger.warning("Poller did not stop in time. Leaving to OS.")
             self.poller = None
 
     def _handle_start_from_coil(self):
-        logger.info("Start Coil Detected!")
+        logger.info("--- PHYSICAL START DETECTED ---")
         self._stop_polling()
-        time.sleep(0.5)
+        
+        # Reset START Coil (Using QTimer to avoid blocking main thread and ensure separation)
+        QTimer.singleShot(200, self._deferred_coil_reset_and_start)
 
-        # Reset START Coil
+    def _deferred_coil_reset_and_start(self):
         try:
-            from src.core.drivers.modbus_driver import ModbusRTU
             com_port = self.cmb_comPort.currentText()
-            
             if not com_port.startswith("--"):
-                mb = None
-                try:
-                    mb = ModbusRTU(port=com_port)
-                    plc = SLAVE_DEVICES.get("PLC")
-                    if plc:
-                        slave_id = plc["slave_id"]
-                        start_coil = plc["coils"].get("START")
-                        if start_coil is not None:
-                            logger.info("Resetting START Coil...")
-                            mb.write_coil(slave_id, start_coil, False)
-                finally:
-                    if mb:
-                        mb.close()
-
+                from src.core.drivers.modbus_manager import ModbusManager
+                mb = ModbusManager.get_client(port=com_port)
+                plc = SLAVE_DEVICES.get("PLC")
+                if plc:
+                    slave_id = plc["slave_id"]
+                    start_coil = plc["coils"].get("START")
+                    if start_coil is not None:
+                        logger.info(f"Resetting START Coil (Addr {start_coil})")
+                        mb.write_coil(slave_id, start_coil, False)
         except Exception as e:
             logger.error(f"Failed to reset START Coil: {e}")
 
-        time.sleep(0.5)
-        # Trigger start test
-        self.start_tests()
+        # Final small delay before triggering tests to ensure bus is clear
+        QTimer.singleShot(300, self.start_tests)
 
     def _on_com_port_changed(self):
         self._stop_polling()

@@ -105,8 +105,18 @@ class TestRunner(QThread):
         logger.warning("Stop requested by user")
         self._stop_requested = True
 
+    def _interruptible_sleep(self, seconds):
+        """Sleeps in small increments, allowing immediate exit if stop is requested."""
+        if seconds <= 0: return
+        end_time = time.time() + seconds
+        while time.time() < end_time:
+            if self._stop_requested or self._fatal_error:
+                break
+            time.sleep(min(0.1, end_time - time.time()))
+
     # -------------------------------------------------
     def run(self):
+        threading.current_thread().name = "TestRunner"
         print("[TEST] ====================================")
         print("[TEST] Test execution started")
         logger.info("Test execution started")
@@ -115,7 +125,8 @@ class TestRunner(QThread):
             print(f"[TEST] Opening Modbus RTU on {self.com_port}")
             logger.info(f"Opening Modbus RTU on {self.com_port}")
 
-            self.modbus = ModbusRTU(port=self.com_port)
+            from src.core.drivers.modbus_manager import ModbusManager
+            self.modbus = ModbusManager.get_client(port=self.com_port, timeout=0.8)
 
             # -------------------------------------------------
             # START SAFETY MONITOR
@@ -139,21 +150,46 @@ class TestRunner(QThread):
                 self._execute_test(self.test_cases[self.start_index])
 
             else:
+                total_start = time.time()
+                count = 0
                 for tc in self.test_cases[self.start_index:]:
                     if self._stop_requested or self._fatal_error:
                         break
+                    case_start = time.time()
                     self._execute_test(tc)
+                    # Idle time to let the bus breathe for SafetyMonitor/QR
+                    time.sleep(0.1)
+                    case_duration = time.time() - case_start
+                    logger.info(f"Test case SN={tc['sn']} took {case_duration:.2f}s")
+                    count += 1
+                    
+                    # Ensure GUI thread doesn't starve during high-frequency sequences
+                    from PySide6.QtWidgets import QApplication
+                    QApplication.processEvents()
+                
+                total_duration = time.time() - total_start
+                logger.info(f"Total execution of {count} test cases took {total_duration:.2f}s ({total_duration/60:.2f} mins)")
 
         except Exception as e:
             logger.error(f"Fatal Modbus error: {e}")
             self._fatal_comm_error("Modbus", "-", e)
+        except BaseException as be:
+            logger.error(f"CRITICAL BASE EXCEPTION in TestRunner: {be}")
+            import traceback
+            logger.error(traceback.format_exc())
+            self._fatal_error = True
 
         finally:
             # STOP SAFETY MONITOR
             if self.safety_stop_event:
                 self.safety_stop_event.set()
             if self.safety_monitor:
-                self.safety_monitor.join()
+                try:
+                    self.safety_monitor.join(timeout=2)
+                    if self.safety_monitor.is_alive():
+                        logger.warning("SafetyMonitor failed to join in time")
+                except Exception as e:
+                    logger.warning(f"Error joining SafetyMonitor: {e}")
 
             # SAFETY: FORCE MAINS OFF (always)
             if self.modbus:
@@ -166,17 +202,24 @@ class TestRunner(QThread):
                     logger.info("MAINS OFF (final safety)")
 
                     self.modbus.write_coil( plc_slave,coils["MAIN_CONTACTOR"],False)
-                    time.sleep(0.5)
-
-                    # 2️⃣ Turn OFF all coils (including MAIN again — no issue)
-                    print("[PLC] FINAL SAFETY RESET → ALL COILS OFF")
-                    logger.info("FINAL SAFETY RESET → ALL COILS OFF")
-
-                    for name, addr in coils.items():
-                        try:
-                            self.modbus.write_coil(plc_slave, addr, False)
-                        except Exception as inner_e:
-                            logger.warning(f"Failed to reset coil {name}: {inner_e}")
+                    time.sleep(0.5)                    # 2️⃣ Turn OFF all relays in a batch (addresses 1-31 are contiguous relays)
+                    # We avoid writing to 35, 102+ which are inputs
+                    start_cleanup = time.time()
+                    logger.info("Performing batch relay reset (Addresses 1-31)")
+                    try:
+                        # Create a list of 31 'False' values
+                        reset_vals = [False] * 31
+                        self.modbus.write_coils(plc_slave, 1, reset_vals)
+                    except Exception as batch_e:
+                        logger.warning(f"Batch reset failed, falling back to sequential: {batch_e}")
+                        # Fallback just in case
+                        for name, addr in coils.items():
+                            try:
+                                if addr <= 31: # Only reset outputs
+                                    self.modbus.write_coil(plc_slave, addr, False)
+                            except Exception: pass
+                    cleanup_duration = time.time() - start_cleanup
+                    logger.info(f"Cleanup finished in {cleanup_duration:.4f}s")
 
 
                 except Exception as e:
@@ -184,12 +227,12 @@ class TestRunner(QThread):
 
             # CLOSE MODBUS CONNECTION
             if self.modbus:
-                print("[TEST] Closing Modbus connection")
-                logger.info("Closing Modbus connection")
-                try:
-                    self.modbus.close()
-                except Exception:
-                    pass
+                print("[TEST] Modbus connection kept open by manager")
+                logger.info("Modbus connection kept open by manager")
+                # try:
+                #     self.modbus.close()
+                # except Exception:
+                #     pass
 
             # FINAL STATUS REPORT
             if self._fatal_error:
@@ -205,7 +248,10 @@ class TestRunner(QThread):
                 logger.info("Test execution completed successfully")
                 status = "success"
 
-            self.finished_signal.emit(status)
+            try:
+                self.finished_signal.emit(status)
+            except Exception as e:
+                logger.error(f"Failed to emit finished_signal: {e}")
 
     # -------------------------------------------------
     def _execute_test(self, tc):
@@ -288,7 +334,6 @@ class TestRunner(QThread):
 
             print(f"[PLC] WRITE coil B_EN = {bv != 'NC'}")
             self.modbus.write_coil(plc_slave, coils["B_EN"], bv != "NC")
-
             print(
                 f"[TEST] Phase enables → "
                 f"R_EN={rv != 'NC'}, "
@@ -298,17 +343,17 @@ class TestRunner(QThread):
 
             # -------------------------------------------------
             # Reset ALL transformer taps (COMMON)
-            print("[PLC] Resetting ALL transformer taps (COMMON)")
-
-            for name, addr in coils.items():
-                if name.startswith("T_"):
-                    print(f"[PLC] RESET coil {name}")
-                    self.modbus.write_coil(plc_slave, addr, False)
+            # -------------------------------------------------
+            t_addrs = [addr for name, addr in coils.items() if name.startswith("T_")]
+            if t_addrs:
+                start_t = min(t_addrs)
+                count_t = max(t_addrs) - start_t + 1
+                print(f"[PLC] Resetting ALL transformer taps (Batch: {start_t} count {count_t})")
+                self.modbus.write_coils(plc_slave, start_t, [False] * count_t)
 
             # -------------------------------------------------
             # Decide voltage to apply (first non-NC phase)
             # -------------------------------------------------
-            # Decide voltage to apply (first non-NC phase)
             selected_voltage = None
             for v in (rv, yv, bv):
                 if v != "NC":
@@ -342,15 +387,12 @@ class TestRunner(QThread):
             # =================================================
             # CURRENT TAPS
             # =================================================
-            print("[PLC] Resetting ALL current relays")
-
-            for pcb in (1, 2):
-                for cur in CURRENT_TAPPINGS:
-                    if cur != "0A":
-                        cur_key = cur.replace("A", "").replace(".", "_")
-                        coil_name = f"CUR{pcb}_{cur_key}"
-                        print(f"[PLC] RESET coil {coil_name}")
-                        self.modbus.write_coil(plc_slave, coils[coil_name], False)
+            cur_addrs = [addr for name, addr in coils.items() if name.startswith("CUR1_") or name.startswith("CUR2_")]
+            if cur_addrs:
+                start_cur = min(cur_addrs)
+                count_cur = max(cur_addrs) - start_cur + 1
+                print(f"[PLC] Resetting ALL current relays (Batch: {start_cur} count {count_cur})")
+                self.modbus.write_coils(plc_slave, start_cur, [False] * count_cur)
 
             # -------------------------------------------------
             # Apply current only to active PCBs
@@ -365,8 +407,8 @@ class TestRunner(QThread):
                 print("[PLC] No current applied (0A selected)")
 
             print("[TEST] Waiting for stabilization (cool-down)")
-            logger.info("Waiting for stabilization")
-            time.sleep(self.stabilization_time)
+            logger.info(f"Waiting for stabilization ({self.stabilization_time}s)")
+            self._interruptible_sleep(self.stabilization_time)
 
             self._task_ok("Setting Voltage and Current Relays")
 
@@ -392,8 +434,20 @@ class TestRunner(QThread):
 
             self.modbus.write_coil( plc_slave, coils["MAIN_CONTACTOR"],True)
 
+            # Calculate extra stabilization time for high voltages
+            extra_delay = 0.0
+            if selected_voltage:
+                import re
+                match = re.search(r'\d+', selected_voltage)
+                if match and int(match.group()) >= 400:
+                    extra_delay = 1.0
+                    
+            if extra_delay > 0:
+                print(f"[TEST] High voltage selected (>400V), adding {extra_delay}s extra settling time")
+                logger.info(f"High voltage selected (>400V), adding {extra_delay}s extra settling time")
+                
             # Allow contactor + transformer to settle
-            time.sleep(self.stabilization_time)
+            self._interruptible_sleep(self.stabilization_time + extra_delay)
 
         except Exception as e:
             self._task_fail("Setting Voltage and Current Relays", present_slave_name)
@@ -422,24 +476,26 @@ class TestRunner(QThread):
                 logger.info("Neutral CONNECTED → Reading Phase-to-Neutral Voltages")
 
                 if SIMULATION_MODE:
-                    r_v, y_v, b_v = (240.0 + random.uniform(-2, 2) for _ in range(3))
+                    measured_rn = expected_v + random.uniform(-5, 5)
+                    measured_yn = expected_v + random.uniform(-5, 5)
+                    measured_bn = expected_v + random.uniform(-5, 5)
                 else:
-                    r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_N_VOLTAGE"], endian=endian)
-                    y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_N_VOLTAGE"], endian=endian)
-                    b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_N_VOLTAGE"], endian=endian)
+                    # Batch read 3 phases (142, 144, 146)
+                    vals = self.modbus.read_floats(ac["slave_id"], ac["registers"]["R_N_VOLTAGE"], count=3, endian=endian)
+                    measured_rn, measured_yn, measured_bn = vals[0], vals[1], vals[2]
 
-                print(f"[TEST] R-N Voltage = {r_v:.3f} V")
-                print(f"[TEST] Y-N Voltage = {y_v:.3f} V")
-                print(f"[TEST] B-N Voltage = {b_v:.3f} V")
+                print(f"[TEST] R-N Voltage = {measured_rn:.3f} V")
+                print(f"[TEST] Y-N Voltage = {measured_yn:.3f} V")
+                print(f"[TEST] B-N Voltage = {measured_bn:.3f} V")
 
                 logger.info(
-                    f"AC Voltages (P-N) → R-N={r_v:.3f}, Y-N={y_v:.3f}, B-N={b_v:.3f}"
+                    f"AC Voltages (P-N) → R-N={measured_rn:.3f}, Y-N={measured_yn:.3f}, B-N={measured_bn:.3f}"
                 )
 
                 ac_vals = {
-                    "r_v": f"{r_v:.3f}",
-                    "y_v": f"{y_v:.3f}",
-                    "b_v": f"{b_v:.3f}",
+                    "r_v": f"{measured_rn:.3f}",
+                    "y_v": f"{measured_yn:.3f}",
+                    "b_v": f"{measured_bn:.3f}",
                 }
 
             else:
@@ -447,22 +503,24 @@ class TestRunner(QThread):
                 logger.info("Neutral NC → Reading Phase-to-Phase Voltages")
 
                 if SIMULATION_MODE:
-                    r_v, y_v, b_v = (415.0 + random.uniform(-5, 5) for _ in range(3))
+                    measured_ry = expected_v + random.uniform(-5, 5)
+                    measured_yb = expected_v + random.uniform(-5, 5)
+                    measured_br = expected_v + random.uniform(-5, 5)
                 else:
-                    r_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["R_Y_VOLTAGE"], endian=endian)
-                    y_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["Y_B_VOLTAGE"], endian=endian)
-                    b_v = self.modbus.read_float(ac["slave_id"], ac["registers"]["B_R_VOLTAGE"], endian=endian)
+                    # Batch read 3 phases (134, 136, 138)
+                    vals = self.modbus.read_floats(ac["slave_id"], ac["registers"]["R_Y_VOLTAGE"], count=3, endian=endian)
+                    measured_ry, measured_yb, measured_br = vals[0], vals[1], vals[2]
 
-                print(f"[TEST] R-Y Voltage = {r_v:.3f} V")
-                print(f"[TEST] Y-B Voltage = {y_v:.3f} V")
-                print(f"[TEST] B-R Voltage = {b_v:.3f} V")
+                print(f"[TEST] R-Y Voltage = {measured_ry:.3f} V")
+                print(f"[TEST] Y-B Voltage = {measured_yb:.3f} V")
+                print(f"[TEST] B-R Voltage = {measured_br:.3f} V")
 
-                logger.info(f"AC Voltages (P-P) → R-Y={r_v:.3f}, Y-B={y_v:.3f}, B-R={b_v:.3f}")
+                logger.info(f"AC Voltages (P-P) → R-Y={measured_ry:.3f}, Y-B={measured_yb:.3f}, B-R={measured_br:.3f}")
 
                 ac_vals = {
-                    "r_v": f"{r_v:.3f}",
-                    "y_v": f"{y_v:.3f}",
-                    "b_v": f"{b_v:.3f}",
+                    "r_v": f"{measured_ry:.3f}",
+                    "y_v": f"{measured_yb:.3f}",
+                    "b_v": f"{measured_br:.3f}",
                 }
 
             self._task_ok("Reading AC Voltages")
@@ -516,19 +574,9 @@ class TestRunner(QThread):
                         measured_v = expected_v + random.uniform(-0.1, 0.1) if expected_v > 0 else random.uniform(-0.2, 0.2)
                         measured_i = expected_i + random.uniform(-0.05, 0.05) if expected_i > 0 else random.uniform(-0.1, 0.1)
                 else:
-                    # Voltage
-                    measured_v = self.modbus.read_float(
-                        dc_v["slave_id"],
-                        dc_v["registers"]["DC_VOLTAGE"],
-                        endian=dc_v.get("endian", "ABCD")
-                    )
-
-                    # Current
-                    measured_i = self.modbus.read_float(
-                        dc_i["slave_id"],
-                        dc_i["registers"]["DC_CURRENT"],
-                        endian=dc_i.get("endian", "ABCD")
-                    )
+                    # Batch read V and I (2999, 3001)
+                    vals = self.modbus.read_floats(dc_v["slave_id"], dc_v["registers"]["DC_VOLTAGE"], count=2, endian=dc_v.get("endian", "ABCD"))
+                    measured_v, measured_i = vals[0], vals[1]
 
                 print(f"[TEST][PCB{pcb}] DC → V={measured_v:.3f}  I={measured_i:.3f}")
                 logger.info(f"[PCB{pcb}] DC → V={measured_v:.3f}, I={measured_i:.3f}")
@@ -714,6 +762,12 @@ class TestRunner(QThread):
         for cur in CURRENT_TAPPINGS:
             if cur != "0A":
                 cur_key = cur.replace('A', '').replace('.', '_')
+                # Reset ALL impedance relays for this PCB
+                imp_pcb_addrs = [addr for name, addr in coils.items() if name.startswith(f"IMP{pcb_index}_")]
+                if imp_pcb_addrs:
+                    start_imp = min(imp_pcb_addrs)
+                    count_imp = max(imp_pcb_addrs) - start_imp + 1
+                    self.modbus.write_coils(plc_slave, start_imp, [False] * count_imp)
 
                 self.modbus.write_coil(plc_slave, coils[f"CUR1_{cur_key}"], False)
                 self.modbus.write_coil(plc_slave, coils[f"CUR2_{cur_key}"], False)
@@ -754,19 +808,23 @@ class TestRunner(QThread):
         ]:
             print(f"\n[PCB{pcb_index}] Measuring {phase}-N")
 
-            # Always reset phases first (prevent leakage path)
-            self.modbus.write_coil(plc_slave, coils[r_coil], False)
-            self.modbus.write_coil(plc_slave, coils[y_coil], False)
-            self.modbus.write_coil(plc_slave, coils[b_coil], False)
+            # Always reset phases first (prevent leakage path) - Batch Write
+            phase_addrs = [coils[r_coil], coils[y_coil], coils[b_coil]]
+            start_p = min(phase_addrs)
+            # Assuming they are contiguous (they usually are based on generate_plc_coils)
+            # If not contiguous, write_coils still works but we need a bigger range or just individual calls.
+            # Let's check config.py: IMP1_R, Y, B, N are contiguous.
+            self.modbus.write_coils(plc_slave, start_p, [False, False, False])
 
-            time.sleep(0.05)
+            time.sleep(0.02)
 
             # Enable selected phase
             print(f"[PCB{pcb_index}] Closing relay {coil_key}")
             self.modbus.write_coil(plc_slave, coils[coil_key], True)
 
             # Stabilization time for megger
-            time.sleep(self.stabilization_time)
+            logger.info(f"Waiting for megger stabilization ({self.stabilization_time}s)")
+            self._interruptible_sleep(self.stabilization_time)
 
             # Read impedance from correct meter
             if SIMULATION_MODE:
@@ -792,13 +850,13 @@ class TestRunner(QThread):
         # -------------------------------------------------
         # 4) IMMEDIATELY DISABLE HIGH VOLTAGE PATH
         # -------------------------------------------------
-        print(f"\n[PCB{pcb_index}] Disabling impedance path")
-
-        self.modbus.write_coil(plc_slave, coils[test_en], False)
-        self.modbus.write_coil(plc_slave, coils[r_coil], False)
-        self.modbus.write_coil(plc_slave, coils[y_coil], False)
-        self.modbus.write_coil(plc_slave, coils[b_coil], False)
-        self.modbus.write_coil(plc_slave, coils[n_coil], False)
+        # Batch reset all impedance relays
+        all_imp_addrs = [coils[test_en], coils[r_coil], coils[y_coil], coils[b_coil], coils[n_coil]]
+        start_all = min(all_imp_addrs)
+        end_all = max(all_imp_addrs)
+        count_all = end_all - start_all + 1
+        # To be safe, we just write False to the whole range
+        self.modbus.write_coils(plc_slave, start_all, [False] * count_all)
 
         # -------------------------------------------------
         # 5) VALIDATION

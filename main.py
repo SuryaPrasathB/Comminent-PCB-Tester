@@ -12,6 +12,14 @@ from src.core.logger import logger
 if __name__ == "__main__":
     logger.info("Application startup initiated")
 
+    # Install global crash handler (before anything else)
+    try:
+        from src.core.crash_handler import install_crash_handler
+        install_crash_handler()
+    except Exception as e:
+        print(f"Failed to install crash handler: {e}")
+
+
     # Create database tables once on startup
     create_tables()
     logger.info("Database tables checked/created")
@@ -99,3 +107,10 @@ if __name__ == "__main__":
         print(f"Application error: {e}")
         logger.error(f"Fatal application error: {e}")
         sys.exit(1)
+    finally:
+        try:
+            from src.core.drivers.modbus_manager import ModbusManager
+            ModbusManager.close_all()
+            logger.info("All Modbus connections closed on exit")
+        except:
+            pass
