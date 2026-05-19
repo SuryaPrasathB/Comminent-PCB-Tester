@@ -68,6 +68,7 @@ class AppLogger(QObject):
         try:
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(full_line + "\n")
+                f.flush()
         except Exception:
             pass
 
@@ -84,6 +85,9 @@ class AppLogger(QObject):
     def get_history(self):
         """Returns the list of all logs since application start."""
         return self.history
+
+    def debug(self, message: str):
+        self._log("DEBUG", message)
 
     def info(self, message: str):
         self._log("INFO", message)

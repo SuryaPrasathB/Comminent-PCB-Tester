@@ -66,13 +66,6 @@ class StartPoller(QThread):
 
     def stop(self):
         self.running = False
-        # Optimize stop: Force Close to interrupt any blocking read
-        if self.client:
-            try:
-                if hasattr(self.client, 'client'):
-                    self.client.client.close()
-            except:
-                pass
         self.wait()
 
 class ExecutionView(QWidget):
@@ -307,12 +300,12 @@ class ExecutionView(QWidget):
 
         if project_name.startswith("--"):
             logger.warning("Start aborted: project not selected")
-            QMessageBox.warning(self, "Error", "Select project")
+            QMessageBox.warning(self.window() or self, "Error", "Select project")
             return
 
         if com_port.startswith("--"):
             logger.warning("Start aborted: COM port not selected")
-            QMessageBox.warning(self, "Error", "Select COM port")
+            QMessageBox.warning(self.window() or self, "Error", "Select COM port")
             return
 
         # Stop polling before starting any test
@@ -341,7 +334,7 @@ class ExecutionView(QWidget):
 
         if fail_msgs:
             logger.warning("QR read failed")
-            QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs))
+            QMessageBox.warning(self.window() or self, "QR Error", "\n".join(fail_msgs))
             return
 
         # Update UI
@@ -406,11 +399,11 @@ class ExecutionView(QWidget):
         com_port = self.cmb_comPort.currentText()
 
         if project_name.startswith("--"):
-            QMessageBox.warning(self, "Error", "Select project")
+            QMessageBox.warning(self.window() or self, "Error", "Select project")
             return
 
         if com_port.startswith("--"):
-            QMessageBox.warning(self, "Error", "Select COM port")
+            QMessageBox.warning(self.window() or self, "Error", "Select COM port")
             return
 
         # Stop polling before starting any test
@@ -434,7 +427,7 @@ class ExecutionView(QWidget):
         # Get selected row from the given table
         selected_row = table.currentRow()
         if selected_row < 0:
-            QMessageBox.warning(self, "Warning", "Please select a row to run.")
+            QMessageBox.warning(self.window() or self, "Warning", "Please select a row to run.")
             return
 
         # Clear only this row in this table
@@ -506,7 +499,7 @@ class ExecutionView(QWidget):
 
         # Safety: do not allow reset while running
         if self.runner and self.runner.isRunning():
-            QMessageBox.warning(self, "Warning", "Cannot reset while test is running.")
+            QMessageBox.warning(self.window() or self, "Warning", "Cannot reset while test is running.")
             return
 
         # Stop polling before starting any test
@@ -529,7 +522,7 @@ class ExecutionView(QWidget):
         try:
             com_port = self.cmb_comPort.currentText()
             if com_port.startswith("--"):
-                QMessageBox.warning(self, "Error", "Select COM port to reset PLC")
+                QMessageBox.warning(self.window() or self, "Error", "Select COM port to reset PLC")
                 return
 
             from src.core.drivers.modbus_driver import ModbusRTU
@@ -547,14 +540,14 @@ class ExecutionView(QWidget):
             mb.close()
 
             logger.info("All PLC coils reset successfully")
-            QMessageBox.information(self, "Done", "Tables and PLC relays reset.")
+            QMessageBox.information(self.window() or self, "Done", "Tables and PLC relays reset.")
 
             # Start polling after reset
             self._start_polling()
 
         except Exception as e:
             logger.error(f"PLC Reset failed: {e}")
-            QMessageBox.warning(self, "Error", f"PLC Reset failed:\n{e}")
+            QMessageBox.warning(self.window() or self, "Error", f"PLC Reset failed:\n{e}")
 
     # -------------------------------------------------
 
@@ -712,25 +705,25 @@ class ExecutionView(QWidget):
                     dialog = TestCompletionDialog(popup_results, self.ui)
                     dialog.exec_()
                 else:
-                    QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.\nReports generated.")
+                    QMessageBox.information(self.window() or self, "Test Completed", "All tests have been completed successfully.\nReports generated.")
 
             self._start_polling()
 
         elif status == "error":
             print("[EXEC] on_tests_finished : error")
             logger.info("[EXEC] on_tests_finished : error")
-            QMessageBox.information(self.ui, "Test Failed", "Error")
+            QMessageBox.information(self.window() or self, "Test Failed", "Error")
             self._start_polling()
         elif status == "stop_requested":
             print("[EXEC] on_tests_finished : stopped")
             logger.info("[EXEC] on_tests_finished : stopped")
-            QMessageBox.information(self.ui, "Test Completed", "All tests have been stopped successfully.")
+            QMessageBox.information(self.window() or self, "Test Completed", "All tests have been stopped successfully.")
             self._start_polling()
 
 
     # -------------------------------------------------
     def on_test_error(self, msg):
-        QMessageBox.critical(self, "Error", msg)
+        QMessageBox.critical(self.window() or self, "Error", msg)
 
     # -------------------------------------------------
     def check_safety_pre_start(self, com_port):
@@ -773,7 +766,7 @@ class ExecutionView(QWidget):
                 mb.close()
 
     def show_safety_popup(self, reason):
-        msg = QMessageBox(self)
+        msg = QMessageBox(self.window() or self)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("Safety Alert")
         msg.setText(f"Operation Stopped!\n\nReason: {reason}")

@@ -39,7 +39,7 @@ class ModbusRTU:
     # ---------------- COILS ----------------
     def write_coil(self, slave, address, value: bool):
         with self.lock:
-            logger.info(f"write_coil | slave={slave}, address={address}, value={value}")
+            logger.debug(f"write_coil | slave={slave}, address={address}, value={value}")
 
             if self.is_simulated:
                 return
@@ -51,7 +51,7 @@ class ModbusRTU:
 
     def read_coils(self, slave, address, count=1):
         with self.lock:
-            logger.info(f"read_coils | slave={slave}, address={address}, count={count}")
+            logger.debug(f"read_coils | slave={slave}, address={address}, count={count}")
 
             if self.is_simulated:
                 return [False] * count
@@ -65,7 +65,7 @@ class ModbusRTU:
     # ---------------- HOLDING REGISTERS ----------------
     def read_holding_registers(self, slave, address, count=2):
         with self.lock:
-            logger.info(
+            logger.debug(
                 f"read_holding_registers | slave={slave}, address={address}, count={count}"
             )
 
@@ -88,7 +88,7 @@ class ModbusRTU:
             'CDAB' → Word-swapped float (AC / DC meters)
         """
         with self.lock:
-            logger.info(
+            logger.debug(
                 f"read_float | slave={slave}, address={address}, endian={endian}"
             )
 
@@ -111,7 +111,7 @@ class ModbusRTU:
                 raise ValueError(f"Unsupported endian mode: {endian}")
 
             value = struct.unpack(">f", raw)[0]
-            logger.info(
+            logger.debug(
                 f"read_float success | slave={slave}, address={address}, value={value}"
             )
 

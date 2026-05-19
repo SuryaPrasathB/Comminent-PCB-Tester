@@ -7,9 +7,27 @@ from src.ui.theme import AppTheme
 from src.core.db_utils import create_tables
 
 from src.core.logger import logger
+import traceback
+import threading
 
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logger.error(f"Uncaught exception: {exc_type.__name__}: {exc_value}")
+    logger.error("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+
+def handle_thread_exception(args):
+    logger.error(f"Uncaught exception in thread: {args.exc_type.__name__ if args.exc_type else 'Unknown'}: {args.exc_value}")
+    if args.exc_traceback:
+        logger.error("".join(traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback)))
+    elif args.exc_value:
+        logger.error(str(args.exc_value))
 
 if __name__ == "__main__":
+    sys.excepthook = handle_exception
+    threading.excepthook = handle_thread_exception
+
     logger.info("Application startup initiated")
 
     # Create database tables once on startup
