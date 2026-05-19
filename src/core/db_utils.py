@@ -320,10 +320,14 @@ def load_test_cases(project_name: str):
 # =====================================================
 # SAVE / UPDATE TEST RESULT (MYSQL 8 SAFE)
 # =====================================================
-def save_test_result(project_name, pcb_serial, sn, data):
+def save_test_result(project_name, pcb_serial, sn, data, conn=None):
     logger.info(f"save_test_result called | Project={project_name}, PCB={pcb_serial}, SN={sn}")
 
-    conn = connect_db()
+    close_after = False
+    if conn is None:
+        conn = connect_db()
+        close_after = True
+        
     if not conn:
         print("[DB][ERROR] save_test_result: DB connection failed")
         return
@@ -380,8 +384,9 @@ def save_test_result(project_name, pcb_serial, sn, data):
 
     finally:
         cur.close()
-        conn.close()
-        logger.info("DB connection closed after save_test_result")
+        if close_after:
+            conn.close()
+            logger.info("DB connection closed after save_test_result")
 
 def delete_project(project_name: str):
     """

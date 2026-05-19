@@ -28,6 +28,7 @@ class StartPoller(QThread):
         self.slave_id = slave_id
         self.coil_addr = coil_addr
         self.running = True
+        self.stop_event = threading.Event()
         self.client = None
         self.t_name = "Unknown"
 
@@ -58,8 +59,9 @@ class StartPoller(QThread):
                     # Log error periodically if desired, but don't spam
                     pass
 
-                # Increased sleep for bus stability
-                self.msleep(1000) 
+                # Increased sleep for bus stability, interruptible
+                if self.stop_event.wait(1.0):
+                    break
 
         except Exception as e:
             logger.error(f"StartPoller [{self.t_name}] failed: {e}")
@@ -69,6 +71,7 @@ class StartPoller(QThread):
     def stop(self):
         logger.info(f"StartPoller [{self.t_name}] : Stop requested")
         self.running = False
+        self.stop_event.set()
 
 
 class ExecutionView(QWidget):
@@ -881,20 +884,33 @@ class ExecutionView(QWidget):
 
         if self.poller:
             self.poller.stop()
-            import time
-            from PySide6.QtWidgets import QApplication
-            timeout = time.time() + 5.0
-            while self.poller.isRunning() and time.time() < timeout:
-                QApplication.processEvents()
-                time.sleep(0.1)
-            if self.poller.isRunning():
-                logger.warning("Poller did not stop in time. Leaving to OS.")
+            # Asynchronous stop: we don't wait for it here.
+            # We simply let it finish in the background.
+            # We explicitly disconnect its signals if we no longer want to handle them
+            try:
+                self.poller.start_signal.disconnect(self._handle_start_from_coil)
+            except Exception:
+                pass
+            
+            # Allow poller to gracefully exit without holding reference
+            poller_ref = self.poller
+            poller_ref.finished.connect(poller_ref.deleteLater)
             self.poller = None
 
     def _handle_start_from_coil(self):
         logger.info("--- PHYSICAL START DETECTED ---")
+        
+        # Capture current poller before clearing it
+        current_poller = self.poller
         self._stop_polling()
         
+        if current_poller and current_poller.isRunning():
+            # Wait asynchronously for the poller thread to finish before proceeding
+            current_poller.finished.connect(self._on_poller_finished_for_start)
+        else:
+            self._on_poller_finished_for_start()
+            
+    def _on_poller_finished_for_start(self):
         # Reset START Coil (Using QTimer to avoid blocking main thread and ensure separation)
         QTimer.singleShot(200, self._deferred_coil_reset_and_start)
 

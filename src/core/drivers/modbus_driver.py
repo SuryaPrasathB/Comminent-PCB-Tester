@@ -323,6 +323,7 @@ class ModbusRTU:
 
             # --- Handle Dynamic Baudrate ---
             old_baud = ser.baudrate
+            old_timeout = ser.timeout
             if baudrate and baudrate != old_baud:
                 logger.info(f"Switching baudrate: {old_baud} -> {baudrate}")
                 ser.baudrate = baudrate
@@ -333,14 +334,14 @@ class ModbusRTU:
                 ser.reset_input_buffer()
                 ser.reset_output_buffer()
 
+                # Set timeout so read will block efficiently until data or timeout
+                ser.timeout = delay
+
                 # Transmit
                 ser.write(tx_bytes)
                 ser.flush()
 
-                # Wait for hardware response
-                time.sleep(delay)
-
-                # Read
+                # Read efficiently using PySerial timeout
                 rx = ser.read(rx_len)
                 
                 if rx:
@@ -353,7 +354,8 @@ class ModbusRTU:
                     return b""
             
             finally:
-                # Restore original baudrate
+                # Restore original baudrate and timeout
+                ser.timeout = old_timeout
                 if baudrate and ser.baudrate != old_baud:
                     logger.info(f"Restoring baudrate: {ser.baudrate} -> {old_baud}")
                     ser.baudrate = old_baud

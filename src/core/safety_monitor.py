@@ -1,15 +1,16 @@
-import threading
 import time
+from PySide6.QtCore import QThread, Signal
 from src.core.logger import logger
 from src.core.config import SLAVE_DEVICES
 
-class SafetyMonitor(threading.Thread):
-    def __init__(self, modbus_client, stop_event, callback):
-        super().__init__(name="SafetyMonitor")
+class SafetyMonitor(QThread):
+    safety_alert_signal = Signal(str)
+
+    def __init__(self, modbus_client, stop_event):
+        super().__init__()
+        self.setObjectName("SafetyMonitor")
         self.modbus = modbus_client
         self.stop_event = stop_event
-        self.callback = callback
-        self.daemon = True
         
         plc = SLAVE_DEVICES["PLC"]
         self.plc_slave = plc["slave_id"]
@@ -39,23 +40,25 @@ class SafetyMonitor(threading.Thread):
                     
                     if estop_active:
                         logger.warning("SafetyMonitor: EMERGENCY STOP DETECTED")
-                        self.callback("Emergency Stop")
+                        self.safety_alert_signal.emit("Emergency Stop")
                         break
                         
                     if curtain_active:
                         logger.warning("SafetyMonitor: CURTAIN SENSOR DETECTED")
-                        self.callback("Curtain Sensor")
+                        self.safety_alert_signal.emit("Curtain Sensor")
                         break
                 
                 # Increased sleep to reduce bus contention on shared RS485 port
                 # Slowed to 1.0s to give more bus bandwidth to TestRunner
-                time.sleep(1.0) 
+                if self.stop_event.wait(1.0):
+                    break
                 
             except Exception as e:
                 # Log errors but continue unless severe
                 # If modbus is closed externally, this might spam errors until stop_event is set
                 logger.error(f"SafetyMonitor error: {e}")
-                time.sleep(1)
+                if self.stop_event.wait(1.0):
+                    break
             except BaseException as be:
                 logger.error(f"CRITICAL BASE EXCEPTION in SafetyMonitor: {be}")
                 import traceback

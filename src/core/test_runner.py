@@ -51,6 +51,7 @@ class TestRunner(QThread):
         self.modbus = None
         self.safety_monitor = None
         self.safety_stop_event = None
+        self.db_conn = None
 
         print("[TEST] ====================================")
         print("[TEST] TestRunner initialized")
@@ -106,13 +107,12 @@ class TestRunner(QThread):
         self._stop_requested = True
 
     def _interruptible_sleep(self, seconds):
-        """Sleeps in small increments, allowing immediate exit if stop is requested."""
+        """Sleeps interruptibly, allowing immediate exit if stop is requested."""
         if seconds <= 0: return
-        end_time = time.time() + seconds
-        while time.time() < end_time:
-            if self._stop_requested or self._fatal_error:
-                break
-            time.sleep(min(0.1, end_time - time.time()))
+        if self.safety_stop_event:
+            self.safety_stop_event.wait(seconds)
+        else:
+            time.sleep(seconds)
 
     # -------------------------------------------------
     def run(self):
@@ -122,6 +122,9 @@ class TestRunner(QThread):
         logger.info("Test execution started")
 
         try:
+            from src.core.db_utils import connect_db
+            self.db_conn = connect_db()
+            
             print(f"[TEST] Opening Modbus RTU on {self.com_port}")
             logger.info(f"Opening Modbus RTU on {self.com_port}")
 
@@ -134,9 +137,10 @@ class TestRunner(QThread):
             self.safety_stop_event = threading.Event()
             self.safety_monitor = SafetyMonitor(
                 self.modbus,
-                self.safety_stop_event,
-                self._safety_callback
+                self.safety_stop_event
             )
+            # Connect using queued connection implicitly via Qt when cross-thread
+            self.safety_monitor.safety_alert_signal.connect(self._safety_callback)
             self.safety_monitor.start()
             logger.info("SafetyMonitor started within TestRunner")
 
@@ -158,14 +162,10 @@ class TestRunner(QThread):
                     case_start = time.time()
                     self._execute_test(tc)
                     # Idle time to let the bus breathe for SafetyMonitor/QR
-                    time.sleep(0.1)
+                    self._interruptible_sleep(0.1)
                     case_duration = time.time() - case_start
                     logger.info(f"Test case SN={tc['sn']} took {case_duration:.2f}s")
                     count += 1
-                    
-                    # Ensure GUI thread doesn't starve during high-frequency sequences
-                    from PySide6.QtWidgets import QApplication
-                    QApplication.processEvents()
                 
                 total_duration = time.time() - total_start
                 logger.info(f"Total execution of {count} test cases took {total_duration:.2f}s ({total_duration/60:.2f} mins)")
@@ -180,16 +180,23 @@ class TestRunner(QThread):
             self._fatal_error = True
 
         finally:
+            if self.db_conn:
+                try:
+                    self.db_conn.close()
+                except Exception as e:
+                    logger.warning(f"Error closing DB connection: {e}")
+                self.db_conn = None
+                
             # STOP SAFETY MONITOR
             if self.safety_stop_event:
                 self.safety_stop_event.set()
             if self.safety_monitor:
                 try:
-                    self.safety_monitor.join(timeout=2)
-                    if self.safety_monitor.is_alive():
-                        logger.warning("SafetyMonitor failed to join in time")
+                    self.safety_monitor.wait(2000)
+                    if self.safety_monitor.isRunning():
+                        logger.warning("SafetyMonitor failed to wait in time")
                 except Exception as e:
-                    logger.warning(f"Error joining SafetyMonitor: {e}")
+                    logger.warning(f"Error waiting SafetyMonitor: {e}")
 
             # SAFETY: FORCE MAINS OFF (always)
             if self.modbus:
@@ -686,7 +693,8 @@ class TestRunner(QThread):
                     "measured_v": v_meas,
                     "measured_i": i_meas,
                     "result": result
-                }
+                },
+                conn=self.db_conn
             )
 
         else:
