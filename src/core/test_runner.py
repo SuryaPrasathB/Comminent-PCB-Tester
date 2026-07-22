@@ -349,14 +349,14 @@ class TestRunner(QThread):
             )
 
             # -------------------------------------------------
-            # Reset ALL transformer taps (COMMON)
+            # Reset ALL transformer taps (COMMON) sequentially
             # -------------------------------------------------
             t_addrs = [addr for name, addr in coils.items() if name.startswith("T_")]
             if t_addrs:
-                start_t = min(t_addrs)
-                count_t = max(t_addrs) - start_t + 1
-                print(f"[PLC] Resetting ALL transformer taps (Batch: {start_t} count {count_t})")
-                self.modbus.write_coils(plc_slave, start_t, [False] * count_t)
+                print(f"[PLC] Resetting ALL transformer taps sequentially")
+                for tap_addr in sorted(t_addrs):
+                    self.modbus.write_coil(plc_slave, tap_addr, False)
+                    time.sleep(0.05) # Tiny delay to prevent bus/relay overload
 
             # -------------------------------------------------
             # Decide voltage to apply (first non-NC phase)
@@ -396,10 +396,10 @@ class TestRunner(QThread):
             # =================================================
             cur_addrs = [addr for name, addr in coils.items() if name.startswith("CUR1_") or name.startswith("CUR2_")]
             if cur_addrs:
-                start_cur = min(cur_addrs)
-                count_cur = max(cur_addrs) - start_cur + 1
-                print(f"[PLC] Resetting ALL current relays (Batch: {start_cur} count {count_cur})")
-                self.modbus.write_coils(plc_slave, start_cur, [False] * count_cur)
+                print(f"[PLC] Resetting ALL current relays sequentially")
+                for c_addr in sorted(cur_addrs):
+                    self.modbus.write_coil(plc_slave, c_addr, False)
+                    time.sleep(0.05)
 
             # -------------------------------------------------
             # Apply current only to active PCBs

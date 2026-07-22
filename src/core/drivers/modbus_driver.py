@@ -125,7 +125,7 @@ class ModbusRTU:
 
                     # 1. Try the original call (usually with slave=...)
                     try:
-                        logger.info(f"[{t_name}] Modbus Call: {method_name} | args={args} | kwargs={kwargs}")
+                        logger.debug(f"[{t_name}] Modbus Call: {method_name} | args={args} | kwargs={kwargs}")
                         return validate_result(method(*args, **kwargs))
                     except TypeError as te:
                         error_msg = str(te)
