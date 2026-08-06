@@ -164,12 +164,17 @@ class ModbusRTU:
                     ser = getattr(self.client, 'socket', None)
                     if not ser:
                         ser = getattr(self.client, 'transport', None)
-                    if ser and hasattr(ser, 'reset_input_buffer'):
-                        try:
-                            ser.reset_input_buffer()
-                            ser.reset_output_buffer()
-                        except Exception as clear_err:
-                            logger.debug(f"[{t_name}] Modbus: Could not clear buffers: {clear_err}")
+                    # (Removed buffer clearing to prevent hard crashes on Windows during USB drops)
+
+                    # EMI Safe Patch: Add a sleep after writing to let relays settle
+                    if ser and not getattr(ser, '_emi_patched', False):
+                        original_write = ser.write
+                        def emi_safe_write(data):
+                            res = original_write(data)
+                            time.sleep(0.15)
+                            return res
+                        ser.write = emi_safe_write
+                        setattr(ser, '_emi_patched', True)
 
                     method = getattr(self.client, method_name)
                     
@@ -399,25 +404,49 @@ class ModbusRTU:
                 time.sleep(0.2) 
 
             try:
-                ser.reset_input_buffer()
-                ser.reset_output_buffer()
-                ser.timeout = delay
+                # (Removed buffer clearing to prevent hard crashes on Windows during USB drops)
+                
+                # Assert DTR and RTS just in case the scanner relies on them for power or flow control (Docklight does this by default)
+                try:
+                    ser.dtr = True
+                    ser.rts = True
+                except Exception:
+                    pass
+
                 ser.write(tx_bytes)
                 ser.flush()
 
-                rx = ser.read(rx_len)
+                # Robust polling loop to avoid relying on ser.timeout propagation
+                rx = b""
+                start_time = time.time()
+                while time.time() - start_time < delay:
+                    try:
+                        if hasattr(ser, 'in_waiting') and ser.in_waiting > 0:
+                            time.sleep(0.1) # Wait a tiny bit for the rest of the payload to arrive
+                            rx = ser.read(ser.in_waiting)
+                            break
+                    except Exception as poll_e:
+                        logger.debug(f"Polling error: {poll_e}")
+                        pass
+                    time.sleep(0.05)
                 
+                if not rx:
+                    # Fallback if in_waiting is not available or timed out
+                    old_timeout = ser.timeout
+                    ser.timeout = 0.5
+                    rx = ser.read(rx_len)
+                    ser.timeout = old_timeout
+
                 if rx:
                     rx_hex = " ".join(f"{b:02X}" for b in rx)
-                    logger.info(f"send_raw_receive [SUCCESS] | RX: {rx_hex}")
+                    logger.info(f"[{t_name}] send_raw_receive [SUCCESS] | RX: {rx_hex}")
                     print(f"[MODBUS-RAW] RX ({len(rx)} bytes): {rx_hex}")
                     return rx
                 else:
-                    logger.warning("send_raw_receive [TIMEOUT] | No data received")
+                    logger.warning(f"[{t_name}] send_raw_receive [TIMEOUT] | No data received within {delay}s")
                     return b""
             
             finally:
-                ser.timeout = old_timeout
                 if baudrate and ser.baudrate != old_baud:
                     logger.info(f"Restoring baudrate: {ser.baudrate} -> {old_baud}")
                     ser.baudrate = old_baud

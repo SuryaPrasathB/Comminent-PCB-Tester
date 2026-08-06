@@ -192,7 +192,7 @@ class TestRunner(QThread):
                 self.safety_stop_event.set()
             if self.safety_monitor:
                 try:
-                    self.safety_monitor.wait(2000)
+                    self.safety_monitor.wait(10000)
                     if self.safety_monitor.isRunning():
                         logger.warning("SafetyMonitor failed to wait in time")
                 except Exception as e:

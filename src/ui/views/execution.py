@@ -12,7 +12,7 @@ from serial.tools import list_ports
 from src.core.db_utils import load_projects, load_test_cases
 from src.core.test_runner import TestRunner
 from src.core.drivers.raw_serial_driver import RawSerial
-from src.core.config import SLAVE_DEVICES, SIMULATION_MODE
+from src.core.config import SLAVE_DEVICES, SIMULATION_MODE, START_PUSH_BUTTON_POLLING_FEATURE
 
 from src.core.logger import logger
 from src.ui.icons import IconHelper
@@ -489,8 +489,9 @@ class ExecutionView(QWidget):
             print(f"[QR] Reading {qr['display_name']} on {com_port} → CMD {qr['read_cmd']}")
 
             from src.core.drivers.modbus_manager import ModbusManager
-            mb = ModbusManager.get_client(port=com_port)
-            data = mb.send_raw_receive(qr["read_cmd"], delay=0.5, baudrate=115200)
+            scanner_baudrate = qr.get("baudrate", 115200)
+            mb = ModbusManager.get_client(port=com_port, baudrate=scanner_baudrate)
+            data = mb.send_raw_receive(qr["read_cmd"], delay=2.5, baudrate=scanner_baudrate)
             
             if not data:
                  return None
@@ -826,6 +827,9 @@ class ExecutionView(QWidget):
             self.lbl_waiting.setStyleSheet(STYLE_HIDDEN)
 
     def _start_polling(self):
+        if not START_PUSH_BUTTON_POLLING_FEATURE:
+            return
+            
         # If STOP button is enabled, it means a test is running.
         if self.btn_stop.isEnabled(): 
             return
@@ -891,17 +895,16 @@ class ExecutionView(QWidget):
 
         if self.poller:
             self.poller.stop()
-            # Asynchronous stop: we don't wait for it here.
-            # We simply let it finish in the background.
-            # We explicitly disconnect its signals if we no longer want to handle them
+            # Synchronously wait for poller to exit to avoid Modbus flood
+            if not self.poller.wait(10000):
+                logger.warning("StartPoller did not exit within 10 seconds.")
+            
             try:
                 self.poller.start_signal.disconnect(self._handle_start_from_coil)
             except Exception:
                 pass
             
-            # Allow poller to gracefully exit without holding reference
-            poller_ref = self.poller
-            poller_ref.finished.connect(poller_ref.deleteLater)
+            self.poller.deleteLater()
             self.poller = None
 
     def _handle_start_from_coil(self):

@@ -570,9 +570,11 @@ class DebugView(QWidget):
                 return
                 
             qr = SLAVE_DEVICES[scanner_name]
-            
-            mb = ModbusManager.get_client(port=com)
-            rx = mb.send_raw_receive(qr["read_cmd"], delay=0.5, baudrate=115200)
+
+            from src.core.drivers.modbus_manager import ModbusManager
+            scanner_baudrate = qr.get("baudrate", 115200)
+            mb = ModbusManager.get_client(port=com, baudrate=scanner_baudrate)
+            rx = mb.send_raw_receive(qr["read_cmd"], delay=2.5, baudrate=scanner_baudrate)
             
             if rx:
                 field.setText(rx.decode(errors="ignore").strip())

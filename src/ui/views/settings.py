@@ -214,11 +214,12 @@ class SettingsView(QWidget):
         try:
             from src.core.drivers.modbus_manager import ModbusManager
             from src.core.config import SLAVE_DEVICES
-            mb = ModbusManager.get_client(port=port)
             device_key = f"QR_SCANNER_{scanner_num}"
             qr = SLAVE_DEVICES[device_key]
             
-            data = mb.send_raw_receive(qr["read_cmd"], delay=0.5, baudrate=115200)
+            scanner_baudrate = qr.get("baudrate", 115200)
+            mb = ModbusManager.get_client(port=port, baudrate=scanner_baudrate)
+            data = mb.send_raw_receive(qr["read_cmd"], delay=2.5, baudrate=scanner_baudrate)
             
             if not data:
                 raise Exception("No response from scanner.")

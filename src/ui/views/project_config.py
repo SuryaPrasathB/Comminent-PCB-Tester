@@ -384,7 +384,8 @@ class ProjectConfigView(QWidget):
         # STYLE FIX: Row Highlighting & Checkbox Visibility
         # =========================================================================
         # Resolve path for checkbox icon to ensure it's loaded correctly
-        check_icon_path = os.path.join(base_dir, "..", "forms", "checkbox_checked.svg").replace("\\", "/")
+        from src.core.paths import get_resource_path
+        check_icon_path = get_resource_path("src/ui/forms/checkbox_checked.svg").replace("\\", "/")
 
         self.table.setStyleSheet(f"""
             /* Row Selection: Soft Blue-Grey to contrast with Checkboxes */

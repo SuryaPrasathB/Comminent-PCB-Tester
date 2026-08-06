@@ -103,9 +103,7 @@ class RawSerial:
             logger.error("RAW serial not open")
             raise RuntimeError("RAW serial not open")
 
-        # Clear buffers
-        self.ser.reset_input_buffer()
-        self.ser.reset_output_buffer()
+        # (Removed buffer clearing to prevent hard crashes on Windows during USB drops)
 
         # 🔹 Proper HEX logging (always padded)
         tx_hex = " ".join(f"{b:02X}" for b in tx_bytes)

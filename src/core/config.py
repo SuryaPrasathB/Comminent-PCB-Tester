@@ -11,6 +11,9 @@ from src.core.logger import logger
 
 SIMULATION_MODE = False
 
+# Global flag to enable or disable push button polling for starting test
+START_PUSH_BUTTON_POLLING_FEATURE = False
+
 # =====================================================
 # SERIAL / MODBUS COMMUNICATION SETTINGS
 # =====================================================
@@ -234,12 +237,14 @@ SLAVE_DEVICES = {
 
     "QR_SCANNER_1": {
         "read_cmd": "015404",  # in Hex
-        "display_name": "QR_Code_Scanner_1"
+        "display_name": "QR_Code_Scanner_1",
+        "baudrate": 115200
     },
 
     "QR_SCANNER_2": {
         "read_cmd": "025404",  # in Hex
-        "display_name": "QR_Code_Scanner_2"
+        "display_name": "QR_Code_Scanner_2",
+        "baudrate": 115200
     },
 
     "PLC": {
