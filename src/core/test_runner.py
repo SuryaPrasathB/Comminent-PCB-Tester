@@ -129,7 +129,7 @@ class TestRunner(QThread):
             logger.info(f"Opening Modbus RTU on {self.com_port}")
 
             from src.core.drivers.modbus_manager import ModbusManager
-            self.modbus = ModbusManager.get_client(port=self.com_port, timeout=0.8)
+            self.modbus = ModbusManager.get_client(port=self.com_port, timeout=2.0)
 
             # -------------------------------------------------
             # START SAFETY MONITOR

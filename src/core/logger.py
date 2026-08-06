@@ -81,6 +81,9 @@ class AppLogger:
     def error(self, message: str):
         self._log("ERROR", message)
 
+    def debug(self, message: str):
+        self._log("DEBUG", message)
+
 
 # ✅ Global singleton
 logger = AppLogger()

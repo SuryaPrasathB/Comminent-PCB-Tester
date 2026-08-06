@@ -4,6 +4,7 @@ import struct
 import logging
 import threading
 import time
+import queue
 
 from src.core.logger import logger
 from src.core.config import SIMULATION_MODE, SERIAL_SETTINGS
@@ -19,6 +20,10 @@ class ModbusRTU:
         self.baudrate = baudrate if baudrate != 9600 else SERIAL_SETTINGS.get("baudrate", 9600)
         self.timeout = timeout if timeout != 1 else SERIAL_SETTINGS.get("timeout", 1)
         self.client = None
+
+        self.request_queue = queue.Queue()
+        self.worker_thread = threading.Thread(target=self._worker_loop, name=f"ModbusWorker-{self.port}", daemon=True)
+        self.worker_thread.start()
 
         if not self.is_simulated:
             try:
@@ -59,43 +64,88 @@ class ModbusRTU:
                 self.client = None
                 return False
 
-    def close(self):
-        t_name = threading.current_thread().name
-        # Try to acquire lock with timeout to prevent hanging the UI thread during shutdown
+    def reset_connection(self):
+        """Closes the underlying Modbus serial client without stopping the worker thread."""
         locked = self.lock.acquire(blocking=True, timeout=0.5)
         if not locked:
-            logger.warning(f"[{t_name}] Close: Could not acquire lock within 0.5s. Forcefully closing client.")
+            logger.warning(f"reset_connection: Could not acquire lock within 0.5s. Forcefully closing client.")
 
         try:
             if self.is_simulated:
-                logger.info("Simulation Mode: Bypassing Modbus RTU close")
                 return
 
             if self.client:
-                logger.info(f"Closing Modbus RTU connection on {self.port}")
+                logger.info(f"Resetting Modbus RTU connection on {self.port}")
                 try:
                     self.client.close()
-                    logger.info(f"Modbus RTU closed | port={self.port}")
                 except Exception as e:
-                    logger.warning(f"Error while closing Modbus RTU on {self.port}: {e}")
+                    logger.warning(f"Error while resetting Modbus RTU on {self.port}: {e}")
                 finally:
                     self.client = None
         finally:
             if locked:
                 self.lock.release()
 
-    def _retry_wrapper(self, method_name, *args, **kwargs):
+    def close(self):
+        t_name = threading.current_thread().name
+        logger.info(f"[{t_name}] Stopping Modbus worker and closing client on {self.port}")
+
+        # Stop worker thread safely
+        req = {'method': 'STOP'}
+        self.request_queue.put(req)
+
+        # Wait for worker to finish if we are not in the worker thread
+        if threading.current_thread() != self.worker_thread:
+            self.worker_thread.join(timeout=2.0)
+            if self.worker_thread.is_alive():
+                logger.warning(f"[{t_name}] Modbus worker thread on {self.port} did not exit within timeout.")
+
+        self.reset_connection()
+
+    def _worker_loop(self):
+        """Dedicated thread to process all Modbus and Raw IO requests strictly sequentially."""
+        logger.info(f"ModbusWorker started for port {self.port}")
+        while True:
+            try:
+                req = self.request_queue.get()
+                method_name = req.get('method')
+                
+                if method_name == 'STOP':
+                    break
+                
+                if method_name == 'send_raw_receive':
+                    try:
+                        res = self._execute_raw_io(**req['kwargs'])
+                        req['result'] = res
+                    except Exception as e:
+                        req['error'] = e
+                    finally:
+                        req['event'].set()
+                    continue
+
+                try:
+                    res = self._execute_modbus_with_retries(method_name, req.get('t_name', 'Unknown'), *req['args'], **req['kwargs'])
+                    req['result'] = res
+                except Exception as e:
+                    req['error'] = e
+                finally:
+                    req['event'].set()
+
+            except Exception as e:
+                logger.error(f"Error in ModbusWorker loop for {self.port}: {e}")
+        
+        logger.info(f"ModbusWorker stopped for port {self.port}")
+
+    def _execute_modbus_with_retries(self, method_name, t_name, *args, **kwargs):
         """
-        Generic wrapper for Modbus calls with retries and error handling.
+        Internal wrapper for Modbus calls with retries and error handling.
         """
         max_retries = 3
         last_exception = None
-        t_name = threading.current_thread().name
 
         for attempt in range(max_retries):
-            # Use timed acquisition to prevent background threads from hanging indefinitely
             if not self.lock.acquire(timeout=5.0):
-                logger.warning(f"[{t_name}] Modbus attempt {attempt+1}/{max_retries} failed: Lock acquisition timeout")
+                logger.warning(f"[{t_name}] Modbus attempt {attempt+1}/{max_retries} failed: Lock acquisition timeout inside worker")
                 continue
 
             try:
@@ -109,11 +159,18 @@ class ModbusRTU:
                     if self.is_simulated:
                         return None 
 
-                    # Increased inter-request delay for shared RS485 bus stability
-                    # Throttled to 100ms to prevent native driver buffer overflows
-                    time.sleep(0.1)
+                    time.sleep(0.25)
                     
-                    # Execute the method on the client
+                    ser = getattr(self.client, 'socket', None)
+                    if not ser:
+                        ser = getattr(self.client, 'transport', None)
+                    if ser and hasattr(ser, 'reset_input_buffer'):
+                        try:
+                            ser.reset_input_buffer()
+                            ser.reset_output_buffer()
+                        except Exception as clear_err:
+                            logger.debug(f"[{t_name}] Modbus: Could not clear buffers: {clear_err}")
+
                     method = getattr(self.client, method_name)
                     
                     def validate_result(result):
@@ -123,17 +180,14 @@ class ModbusRTU:
                             raise RuntimeError(f"Modbus Error: {result}")
                         return result
 
-                    # 1. Try the original call (usually with slave=...)
                     try:
                         logger.debug(f"[{t_name}] Modbus Call: {method_name} | args={args} | kwargs={kwargs}")
                         return validate_result(method(*args, **kwargs))
                     except TypeError as te:
                         error_msg = str(te)
-                        # Only proceed if it's an 'unexpected keyword argument' error
                         if "unexpected keyword argument" not in error_msg:
                             raise te
                             
-                        # 2. Try known keyword variants
                         variants = ['slave', 'unit', 'device_id']
                         current_key = next((k for k in variants if k in kwargs), None)
                         
@@ -151,12 +205,9 @@ class ModbusRTU:
                                 except TypeError:
                                     continue
                         
-                        # 3. Try Positional Fallback (Brute Force)
                         if current_key:
                             try:
                                 val = kwargs[current_key]
-                                # Map method names to positional order: (address, [count/value], slave)
-                                # Most pymodbus 3.x methods follow this pattern.
                                 new_args = list(args) + [val]
                                 logger.info(f"[{t_name}] Modbus: Trying positional fallback for {method_name} with {new_args}")
                                 res = method(*new_args)
@@ -165,7 +216,6 @@ class ModbusRTU:
                                 logger.warning(f"[{t_name}] Modbus: Positional fallback failed for {method_name}: {positional_e}")
                                 pass
                         
-                        # If all fallbacks failed, raise the original error
                         raise te
                     
                 except Exception as e:
@@ -174,13 +224,36 @@ class ModbusRTU:
             finally:
                 self.lock.release()
             
-            # Sleep OUTSIDE the lock
             time.sleep(0.2 * (attempt + 1))
         
         logger.error(f"[{t_name}] Modbus operation failed after {max_retries} attempts: {last_exception}")
-        # Force close on fatal error to ensure fresh connection next time
-        self.close()
+        self.reset_connection()
         raise last_exception
+
+    def _retry_wrapper(self, method_name, *args, **kwargs):
+        """
+        Public API wrapper that queues the Modbus request and waits for the worker thread.
+        """
+        if self.is_simulated:
+            return None 
+
+        t_name = threading.current_thread().name
+        req = {
+            'method': method_name,
+            'args': args,
+            'kwargs': kwargs,
+            'event': threading.Event(),
+            'result': None,
+            'error': None,
+            't_name': t_name
+        }
+        self.request_queue.put(req)
+        
+        req['event'].wait()
+        
+        if req['error']:
+            raise req['error']
+        return req['result']
 
     # ---------------- COILS ----------------
     def write_coil(self, slave, address, value: bool):
@@ -281,28 +354,17 @@ class ModbusRTU:
         results = self.read_floats(slave, address, count=1, endian=endian)
         return results[0] if results else None
 
-    def send_raw_receive(self, tx_data, rx_len=256, delay=0.5, baudrate=None):
+    def _execute_raw_io(self, tx_bytes, rx_len, delay, baudrate, t_name):
         """
         Sends raw bytes and reads response using the same serial handle.
-        Synchronized by self.lock to prevent collisions with Modbus calls.
-        Supports temporary baudrate switching for non-standard hardware.
+        Synchronized internally by the worker thread queue.
         """
-        # Normalize to bytes for logging
-        if isinstance(tx_data, str):
-            try:
-                tx_bytes = bytes.fromhex(tx_data)
-            except ValueError:
-                tx_bytes = tx_data.encode()
-        else:
-            tx_bytes = bytes(tx_data)
-
         tx_hex = " ".join(f"{b:02X}" for b in tx_bytes)
-        t_name = threading.current_thread().name
-        logger.info(f"[{t_name}] send_raw_receive [START] | TX: {tx_hex} | baudrate={baudrate}")
+        logger.info(f"[{t_name}] _execute_raw_io [START] | TX: {tx_hex} | baudrate={baudrate}")
         print(f"[MODBUS-RAW] TX ({len(tx_bytes)} bytes): {tx_hex}")
         
         if not self.lock.acquire(timeout=5.0):
-             logger.error(f"[{t_name}] send_raw_receive [FATAL] | Lock acquisition timeout")
+             logger.error(f"[{t_name}] _execute_raw_io [FATAL] | Lock acquisition timeout")
              raise RuntimeError("Could not acquire Modbus lock for raw IO")
 
         try:
@@ -313,7 +375,6 @@ class ModbusRTU:
             if not self._ensure_connected():
                 raise RuntimeError("Modbus client not connected for raw access")
 
-            # Access underlying pyserial object
             ser = getattr(self.client, 'socket', None)
             if not ser:
                 ser = getattr(self.client, 'transport', None)
@@ -321,27 +382,20 @@ class ModbusRTU:
             if not ser or not hasattr(ser, 'write'):
                 raise RuntimeError("Could not access underlying serial port")
 
-            # --- Handle Dynamic Baudrate ---
             old_baud = ser.baudrate
             old_timeout = ser.timeout
             if baudrate and baudrate != old_baud:
                 logger.info(f"Switching baudrate: {old_baud} -> {baudrate}")
                 ser.baudrate = baudrate
-                time.sleep(0.2) # Increased stabilization for shared bus
+                time.sleep(0.2) 
 
             try:
-                # Clear buffers
                 ser.reset_input_buffer()
                 ser.reset_output_buffer()
-
-                # Set timeout so read will block efficiently until data or timeout
                 ser.timeout = delay
-
-                # Transmit
                 ser.write(tx_bytes)
                 ser.flush()
 
-                # Read efficiently using PySerial timeout
                 rx = ser.read(rx_len)
                 
                 if rx:
@@ -354,16 +408,46 @@ class ModbusRTU:
                     return b""
             
             finally:
-                # Restore original baudrate and timeout
                 ser.timeout = old_timeout
                 if baudrate and ser.baudrate != old_baud:
                     logger.info(f"Restoring baudrate: {ser.baudrate} -> {old_baud}")
                     ser.baudrate = old_baud
-                    time.sleep(0.2) # Increased stabilization
+                    time.sleep(0.2)
 
         except Exception as e:
-            logger.error(f"[{t_name}] send_raw_receive [FATAL] | {e}")
+            logger.error(f"[{t_name}] _execute_raw_io [FATAL] | {e}")
             raise
         finally:
             self.lock.release()
+
+    def send_raw_receive(self, tx_data, rx_len=256, delay=0.5, baudrate=None):
+        if isinstance(tx_data, str):
+            try:
+                tx_bytes = bytes.fromhex(tx_data)
+            except ValueError:
+                tx_bytes = tx_data.encode()
+        else:
+            tx_bytes = bytes(tx_data)
+
+        t_name = threading.current_thread().name
+
+        req = {
+            'method': 'send_raw_receive',
+            'kwargs': {
+                'tx_bytes': tx_bytes,
+                'rx_len': rx_len,
+                'delay': delay,
+                'baudrate': baudrate,
+                't_name': t_name
+            },
+            'event': threading.Event(),
+            'result': None,
+            'error': None
+        }
+        self.request_queue.put(req)
+        req['event'].wait()
+
+        if req['error']:
+            raise req['error']
+        return req['result']
 
