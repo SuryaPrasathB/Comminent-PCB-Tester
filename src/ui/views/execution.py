@@ -476,10 +476,17 @@ class ExecutionView(QWidget):
         self.runner.start()
 
     # -------------------------------------------------
-    def _read_qr(self, device_key, com_port):
+    def _read_qr(self, device_key, default_com_port):
         try:
+            from src.ui.settings_manager import SettingsManager
+            settings = SettingsManager().get_setting("qr_scanners", {})
+            com_port = settings.get("scanner_1_port" if device_key == "QR_SCANNER_1" else "scanner_2_port")
+            
+            if not com_port:
+                raise Exception(f"No COM port configured for {device_key}")
+
             qr = SLAVE_DEVICES[device_key]
-            print(f"[QR] Reading {qr['display_name']} → CMD {qr['read_cmd']}")
+            print(f"[QR] Reading {qr['display_name']} on {com_port} → CMD {qr['read_cmd']}")
 
             from src.core.drivers.modbus_manager import ModbusManager
             mb = ModbusManager.get_client(port=com_port)

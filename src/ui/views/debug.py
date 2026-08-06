@@ -561,8 +561,14 @@ class DebugView(QWidget):
     # -------------------------------------------------
     def read_qr_code(self, scanner_name, field):
         try:
-            com = self.cmb_com.currentText()
-            if com.startswith("--"): return
+            from src.ui.settings_manager import SettingsManager
+            settings = SettingsManager().get_setting("qr_scanners", {})
+            com = settings.get("scanner_1_port" if scanner_name == "QR_SCANNER_1" else "scanner_2_port")
+            
+            if not com:
+                field.setText("NO PORT")
+                return
+                
             qr = SLAVE_DEVICES[scanner_name]
             
             mb = ModbusManager.get_client(port=com)

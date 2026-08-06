@@ -39,6 +39,10 @@ DEFAULT_SETTINGS = {
             "1.25": {"v_upper": 5.75, "v_lower": 5.30},
             "2.5": {"v_upper": 5.75, "v_lower": 5.10}
         }
+    },
+    "qr_scanners": {
+        "scanner_1_port": "",
+        "scanner_2_port": ""
     }
 }
 
@@ -96,6 +100,13 @@ class SettingsManager:
                             merged_test["limit_table"] = merged_limit
 
                         self._settings["test_parameters"] = merged_test
+
+                    # Deep merge for qr_scanners
+                    if "qr_scanners" in loaded and isinstance(loaded["qr_scanners"], dict):
+                        default_qr = DEFAULT_SETTINGS["qr_scanners"]
+                        merged_qr = default_qr.copy()
+                        merged_qr.update(loaded["qr_scanners"])
+                        self._settings["qr_scanners"] = merged_qr
 
                 logger.info("User settings loaded successfully.")
             except Exception as e:

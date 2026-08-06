@@ -1,6 +1,7 @@
 import os
 import datetime
-from PySide6.QtWidgets import QWidget, QRadioButton, QLineEdit, QPushButton, QFileDialog, QMessageBox, QDoubleSpinBox
+import serial.tools.list_ports
+from PySide6.QtWidgets import QWidget, QRadioButton, QLineEdit, QPushButton, QFileDialog, QMessageBox, QDoubleSpinBox, QComboBox
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice
 from PySide6.QtWidgets import QApplication
@@ -43,6 +44,13 @@ class SettingsView(QWidget):
         # Appearance
         self.radio_light = self.findChild(QRadioButton, "radio_light")
         self.radio_dark = self.findChild(QRadioButton, "radio_dark")
+
+        # QR Scanners
+        self.combo_qr1_port = self.findChild(QComboBox, "combo_qr1_port")
+        self.combo_qr2_port = self.findChild(QComboBox, "combo_qr2_port")
+        self.btn_validate_qr1 = self.findChild(QPushButton, "btn_validate_qr1")
+        self.btn_validate_qr2 = self.findChild(QPushButton, "btn_validate_qr2")
+        self.btn_save_qr_settings = self.findChild(QPushButton, "btn_save_qr_settings")
 
         # Report Export
         self.txt_template = self.findChild(QLineEdit, "lineEdit_templatePath")
@@ -95,6 +103,23 @@ class SettingsView(QWidget):
         else:
             self.radio_dark.setChecked(True)
 
+        # Populate COM Ports for QR Scanners
+        ports = [port.device for port in serial.tools.list_ports.comports()]
+        self.combo_qr1_port.clear()
+        self.combo_qr2_port.clear()
+        self.combo_qr1_port.addItems([""] + ports)
+        self.combo_qr2_port.addItems([""] + ports)
+
+        # Load QR Scanner Settings
+        qr_settings = self.settings_manager.get_setting("qr_scanners") or {}
+        qr1_port = qr_settings.get("scanner_1_port", "")
+        qr2_port = qr_settings.get("scanner_2_port", "")
+        
+        if qr1_port in ports:
+            self.combo_qr1_port.setCurrentText(qr1_port)
+        if qr2_port in ports:
+            self.combo_qr2_port.setCurrentText(qr2_port)
+
         # Report
         report = self.settings_manager.get_setting("report_export") or {}
         self.txt_template.setText(report.get("template_path", ""))
@@ -144,6 +169,10 @@ class SettingsView(QWidget):
         self.radio_light.toggled.connect(self.on_theme_changed)
         self.radio_dark.toggled.connect(self.on_theme_changed)
 
+        self.btn_validate_qr1.clicked.connect(lambda: self.validate_qr(1))
+        self.btn_validate_qr2.clicked.connect(lambda: self.validate_qr(2))
+        self.btn_save_qr_settings.clicked.connect(self.save_qr_settings)
+
         self.btn_browse_template.clicked.connect(self.browse_template)
         self.btn_browse_export.clicked.connect(self.browse_export)
         self.btn_save_report.clicked.connect(self.save_report_config)
@@ -172,6 +201,49 @@ class SettingsView(QWidget):
         dname = QFileDialog.getExistingDirectory(self, "Select Export Folder")
         if dname:
             self.txt_export.setText(dname)
+
+    def validate_qr(self, scanner_num):
+        combo = self.combo_qr1_port if scanner_num == 1 else self.combo_qr2_port
+        btn = self.btn_validate_qr1 if scanner_num == 1 else self.btn_validate_qr2
+        port = combo.currentText()
+        
+        if not port:
+            QMessageBox.warning(self, "Validation Error", f"Please select a COM port for Scanner {scanner_num}.")
+            return
+            
+        try:
+            from src.core.drivers.modbus_manager import ModbusManager
+            from src.core.config import SLAVE_DEVICES
+            mb = ModbusManager.get_client(port=port)
+            device_key = f"QR_SCANNER_{scanner_num}"
+            qr = SLAVE_DEVICES[device_key]
+            
+            data = mb.send_raw_receive(qr["read_cmd"], delay=0.5, baudrate=115200)
+            
+            if not data:
+                raise Exception("No response from scanner.")
+                
+            serial = data.decode(errors="ignore").strip()
+            if serial == "" or serial.upper() == "NG":
+                raise Exception("Invalid or NG response from scanner.")
+                
+            # Success
+            btn.setStyleSheet("background-color: #28a745; color: white;")
+            QMessageBox.information(self, "Success", f"Scanner {scanner_num} responded successfully.\nResponse: {serial}")
+            
+        except Exception as e:
+            btn.setStyleSheet("background-color: #dc3545; color: white;")
+            logger.error(f"QR Validation failed on {port}: {e}")
+            QMessageBox.critical(self, "Validation Failed", f"Failed to validate Scanner {scanner_num} on {port}.\nError: {e}")
+
+    def save_qr_settings(self):
+        config = {
+            "scanner_1_port": self.combo_qr1_port.currentText(),
+            "scanner_2_port": self.combo_qr2_port.currentText()
+        }
+        self.settings_manager.save_setting("qr_scanners", config)
+        QMessageBox.information(self, "Saved", "QR Scanner configuration saved successfully.")
+        logger.info("QR Scanner configuration saved by user")
 
     def save_report_config(self):
         config = {
