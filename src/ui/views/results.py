@@ -23,8 +23,8 @@ class ResultsView(QWidget):
 
     def load_ui(self):
         loader = QUiLoader()
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(base_dir, "..", "forms", "results.ui")
+        from src.core.paths import get_resource_path
+        ui_path = get_resource_path("src/ui/forms/results.ui")
 
         ui_file = QFile(ui_path)
         if not ui_file.open(QIODevice.ReadOnly):

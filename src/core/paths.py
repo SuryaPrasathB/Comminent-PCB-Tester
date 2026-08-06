@@ -30,3 +30,14 @@ def get_report_export_dir():
     report_dir = os.path.join(get_app_data_dir(), "Reports")
     os.makedirs(report_dir, exist_ok=True)
     return report_dir
+
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # We assume the root of the project is the base path when running from source
+        # paths.py is in src/core/, so root is two levels up.
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base_path, relative_path)

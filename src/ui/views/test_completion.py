@@ -8,7 +8,8 @@ class TestCompletionDialog(QDialog):
         super().__init__(parent)
 
         # Load UI
-        ui_file_path = os.path.join(os.path.dirname(__file__), "..", "forms", "test_completion.ui")
+        from src.core.paths import get_resource_path
+        ui_file_path = get_resource_path("src/ui/forms/test_completion.ui")
         ui_file = QFile(ui_file_path)
         if not ui_file.open(QFile.ReadOnly):
             print(f"Cannot open {ui_file_path}: {ui_file.errorString()}")

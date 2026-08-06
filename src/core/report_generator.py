@@ -26,6 +26,10 @@ class ReportGenerator:
             return None
 
         template_path = settings.get("template_path", "")
+        if template_path and not os.path.isabs(template_path):
+            from src.core.paths import get_resource_path
+            template_path = get_resource_path(template_path)
+        
         export_path = settings.get("export_path", "Report Export")
         mappings = settings.get("mappings", {})
 

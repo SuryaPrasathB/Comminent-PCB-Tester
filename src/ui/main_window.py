@@ -35,18 +35,15 @@ class MainWindow(QMainWindow):
         self.setup_navigation()
 
         # Resolve base path for resources (PyInstaller compatibility)
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.abspath(".")
+        from src.core.paths import get_resource_path
 
         # Set Window Icon
-        icon_path = os.path.join(base_path, "resources", "icons", "app_icon.ico")
+        icon_path = get_resource_path("resources/icons/app_icon.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
         # Set Sidebar Logo (Prefer PNG, fallback to ICO)
-        png_path = os.path.join(base_path, "resources", "icons", "app_icon.png")
+        png_path = get_resource_path("resources/icons/app_icon.png")
         logo_path = png_path if os.path.exists(png_path) else icon_path
         
         if os.path.exists(logo_path) and hasattr(self, 'label_logo_icon'):
@@ -61,8 +58,8 @@ class MainWindow(QMainWindow):
     # -------------------------------------------------
     def load_ui(self):
         loader = QUiLoader()
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        ui_path = os.path.join(base_dir, "forms", "main_window.ui")
+        from src.core.paths import get_resource_path
+        ui_path = get_resource_path("src/ui/forms/main_window.ui")
 
         ui_file = QFile(ui_path)
         if not ui_file.open(QIODevice.ReadOnly):

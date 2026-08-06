@@ -249,7 +249,16 @@ class ModbusRTU:
         }
         self.request_queue.put(req)
         
-        req['event'].wait()
+        # Prevent GUI freeze if called from MainThread
+        while not req['event'].wait(0.05):
+            if threading.current_thread().name == "MainThread":
+                try:
+                    from PySide6.QtWidgets import QApplication
+                    app = QApplication.instance()
+                    if app:
+                        app.processEvents()
+                except ImportError:
+                    pass
         
         if req['error']:
             raise req['error']
@@ -445,7 +454,17 @@ class ModbusRTU:
             'error': None
         }
         self.request_queue.put(req)
-        req['event'].wait()
+        
+        # Prevent GUI freeze if called from MainThread
+        while not req['event'].wait(0.05):
+            if threading.current_thread().name == "MainThread":
+                try:
+                    from PySide6.QtWidgets import QApplication
+                    app = QApplication.instance()
+                    if app:
+                        app.processEvents()
+                except ImportError:
+                    pass
 
         if req['error']:
             raise req['error']

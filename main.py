@@ -29,7 +29,8 @@ if __name__ == "__main__":
     # Set global application icon (High quality for taskbar)
     import os
     from PySide6.QtGui import QIcon
-    icon_path = os.path.join("resources", "icons", "app_icon.ico")
+    from src.core.paths import get_resource_path
+    icon_path = get_resource_path("resources/icons/app_icon.ico")
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
     
