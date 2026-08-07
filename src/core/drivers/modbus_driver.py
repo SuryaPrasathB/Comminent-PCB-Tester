@@ -66,9 +66,10 @@ class ModbusRTU:
 
     def reset_connection(self):
         """Closes the underlying Modbus serial client without stopping the worker thread."""
-        locked = self.lock.acquire(blocking=True, timeout=0.5)
+        locked = self.lock.acquire(blocking=True, timeout=15.0)
         if not locked:
-            logger.warning(f"reset_connection: Could not acquire lock within 0.5s. Forcefully closing client.")
+            logger.error("reset_connection: Could not acquire lock within 15.0s. Aborting reset to prevent fatal segfaults.")
+            return
 
         try:
             if self.is_simulated:
