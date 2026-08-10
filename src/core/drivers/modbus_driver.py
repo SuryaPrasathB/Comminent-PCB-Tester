@@ -257,13 +257,8 @@ class ModbusRTU:
         raise last_exception
 
     def _retry_wrapper(self, method_name, *args, **kwargs):
-        """
-        Public API wrapper that queues the Modbus request and waits for the worker thread.
-        """
-        if self.is_simulated:
-            return None 
-
         t_name = threading.current_thread().name
+        
         req = {
             'method': method_name,
             'args': args,
@@ -277,6 +272,10 @@ class ModbusRTU:
         
         # Prevent GUI freeze if called from MainThread
         while not req['event'].wait(0.05):
+            if not self.worker_thread.is_alive():
+                req['error'] = RuntimeError(f"ModbusWorker thread for {self.port} is dead. Cannot execute {method_name}.")
+                break
+                
             if threading.current_thread().name == "MainThread":
                 try:
                     from PySide6.QtWidgets import QApplication
@@ -520,3 +519,35 @@ class ModbusRTU:
             raise req['error']
         return req['result']
 
+
+
+class ModbusTCP(ModbusRTU):
+    def __init__(self, ip, port=502, timeout=1):
+        from src.core.config import SIMULATION_MODE
+        logger.info(f"Initializing ModbusTCP | ip={ip}, port={port}, timeout={timeout}, SIMULATION_MODE={SIMULATION_MODE}")
+
+        # Initialize parent RTU to set up queue, lock, and worker thread
+        super().__init__(port=str(ip) + ":" + str(port), baudrate=9600, timeout=timeout)
+        self.ip = ip
+        self.worker_thread.name = f"ModbusWorker-TCP-{self.ip}"
+
+    def _initialize_client(self):
+        with self.lock:
+            if self.is_simulated:
+                return True
+                
+            from pymodbus.client import ModbusTcpClient
+            try:
+                self.client = ModbusTcpClient(
+                    host=self.ip,
+                    port=int(self.port.split(':')[1]),
+                    timeout=self.timeout
+                )
+                if not self.client.connect():
+                    raise ConnectionError(f"Could not connect to Modbus TCP {self.ip}:{self.port}")
+                logger.info(f"ModbusTCP Connected to {self.ip}:{self.port}")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to initialize Modbus TCP client on {self.ip}:{self.port} | {e}")
+                self.client = None
+                return False
