@@ -1,16 +1,21 @@
 import time
-from PySide6.QtCore import QThread, Signal
+import threading
+from PySide6.QtCore import QObject, Signal
 from src.core.logger import logger
 from src.core.config import SLAVE_DEVICES
 
-class SafetyMonitor(QThread):
+class SafetySignals(QObject):
     safety_alert_signal = Signal(str)
 
+_safety_signal_refs = []
+
+class SafetyMonitor:
     def __init__(self, modbus_client, stop_event):
-        super().__init__()
-        self.setObjectName("SafetyMonitor")
+        self.signals = SafetySignals()
+        _safety_signal_refs.append(self.signals)
         self.modbus = modbus_client
         self.stop_event = stop_event
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
         
         plc = SLAVE_DEVICES["PLC"]
         self.plc_slave = plc["slave_id"]
@@ -19,7 +24,19 @@ class SafetyMonitor(QThread):
         self.addr_estop = coils["EMERGENCY_STOP"]
         self.addr_curtain = coils["CURTAIN_SENSOR"]
 
-    def run(self):
+    def start(self):
+        self._thread.start()
+
+    def wait(self, timeout=None):
+        if timeout:
+            self._thread.join(timeout / 1000.0)
+        else:
+            self._thread.join()
+
+    def isRunning(self):
+        return self._thread.is_alive()
+
+    def _run_loop(self):
         logger.info("SafetyMonitor thread started")
         
         while not self.stop_event.is_set():
@@ -40,12 +57,18 @@ class SafetyMonitor(QThread):
                     
                     if estop_active:
                         logger.warning("SafetyMonitor: EMERGENCY STOP DETECTED")
-                        self.safety_alert_signal.emit("Emergency Stop")
+                        try:
+                            self.signals.safety_alert_signal.emit("Emergency Stop")
+                        except RuntimeError:
+                            pass
                         break
                         
                     if curtain_active:
                         logger.warning("SafetyMonitor: CURTAIN SENSOR DETECTED")
-                        self.safety_alert_signal.emit("Curtain Sensor")
+                        try:
+                            self.signals.safety_alert_signal.emit("Curtain Sensor")
+                        except RuntimeError:
+                            pass
                         break
                 
                 # Increased sleep to reduce bus contention on shared RS485 port

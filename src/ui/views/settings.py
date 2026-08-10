@@ -45,14 +45,16 @@ class SettingsView(QWidget):
         self.radio_light = self.findChild(QRadioButton, "radio_light")
         self.radio_dark = self.findChild(QRadioButton, "radio_dark")
 
-        # QR Scanners
         self.combo_qr1_port = self.findChild(QComboBox, "combo_qr1_port")
         self.combo_qr2_port = self.findChild(QComboBox, "combo_qr2_port")
         self.btn_validate_qr1 = self.findChild(QPushButton, "btn_validate_qr1")
         self.btn_validate_qr2 = self.findChild(QPushButton, "btn_validate_qr2")
-        self.btn_save_qr_settings = self.findChild(QPushButton, "btn_save_qr_settings")
+        self.btn_save_peripherals = self.findChild(QPushButton, "btn_save_peripherals")
 
-        # Report Export
+        # Peripherals
+        self.lineEdit_plc_ip = self.findChild(QLineEdit, "lineEdit_plc_ip")
+        self.btn_plc_connect = self.findChild(QPushButton, "btn_plc_connect")
+        self.combo_rs485_port = self.findChild(QComboBox, "combo_rs485_port")
         self.txt_template = self.findChild(QLineEdit, "lineEdit_templatePath")
         self.txt_export = self.findChild(QLineEdit, "lineEdit_exportPath")
         self.btn_browse_template = self.findChild(QPushButton, "btn_browse_template")
@@ -103,10 +105,12 @@ class SettingsView(QWidget):
         else:
             self.radio_dark.setChecked(True)
 
-        # Populate COM Ports for QR Scanners
+        # Populate COM Ports for PLC and QR Scanners
         ports = [port.device for port in serial.tools.list_ports.comports()]
+        self.combo_rs485_port.clear()
         self.combo_qr1_port.clear()
         self.combo_qr2_port.clear()
+        self.combo_rs485_port.addItems([""] + ports)
         self.combo_qr1_port.addItems([""] + ports)
         self.combo_qr2_port.addItems([""] + ports)
 
@@ -119,6 +123,13 @@ class SettingsView(QWidget):
             self.combo_qr1_port.setCurrentText(qr1_port)
         if qr2_port in ports:
             self.combo_qr2_port.setCurrentText(qr2_port)
+
+        # Load PLC and RS485 Settings
+        plc_settings = self.settings_manager.get_setting("plc_settings") or {}
+        self.lineEdit_plc_ip.setText(plc_settings.get("ip_address", ""))
+        rs485_port = plc_settings.get("com_port", "")
+        if rs485_port in ports:
+            self.combo_rs485_port.setCurrentText(rs485_port)
 
         # Report
         report = self.settings_manager.get_setting("report_export") or {}
@@ -171,12 +182,40 @@ class SettingsView(QWidget):
 
         self.btn_validate_qr1.clicked.connect(lambda: self.validate_qr(1))
         self.btn_validate_qr2.clicked.connect(lambda: self.validate_qr(2))
-        self.btn_save_qr_settings.clicked.connect(self.save_qr_settings)
+        self.btn_save_peripherals.clicked.connect(self.save_peripherals)
 
         self.btn_browse_template.clicked.connect(self.browse_template)
         self.btn_browse_export.clicked.connect(self.browse_export)
         self.btn_save_report.clicked.connect(self.save_report_config)
         self.btn_save_test_params.clicked.connect(self.save_test_params)
+        self.btn_plc_connect.clicked.connect(self.connect_plc)
+
+    def connect_plc(self):
+        ip = self.lineEdit_plc_ip.text().strip()
+        if not ip:
+            QMessageBox.warning(self, "Invalid IP", "Please enter a valid IP address.")
+            return
+
+        # Attempt to test connection (mocking ping for now if ModbusDriver is not easily accessible here)
+        # Simulating a connection test...
+        import socket
+        try:
+            # We try a quick connection to port 502 (Modbus TCP)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1.0)
+            result = sock.connect_ex((ip, 502))
+            sock.close()
+            
+            if result == 0:
+                self.btn_plc_connect.setText("Connected")
+                self.btn_plc_connect.setStyleSheet("background-color: #28a745; color: white;")
+            else:
+                self.btn_plc_connect.setText("Retry")
+                self.btn_plc_connect.setStyleSheet("background-color: #dc3545; color: white;")
+        except Exception as e:
+            logger.error(f"Failed to connect to PLC at {ip}: {e}")
+            self.btn_plc_connect.setText("Retry")
+            self.btn_plc_connect.setStyleSheet("background-color: #dc3545; color: white;")
 
     def on_theme_changed(self):
         # Determine selected theme
@@ -237,14 +276,19 @@ class SettingsView(QWidget):
             logger.error(f"QR Validation failed on {port}: {e}")
             QMessageBox.critical(self, "Validation Failed", f"Failed to validate Scanner {scanner_num} on {port}.\nError: {e}")
 
-    def save_qr_settings(self):
-        config = {
+    def save_peripherals(self):
+        qr_config = {
             "scanner_1_port": self.combo_qr1_port.currentText(),
             "scanner_2_port": self.combo_qr2_port.currentText()
         }
-        self.settings_manager.save_setting("qr_scanners", config)
-        QMessageBox.information(self, "Saved", "QR Scanner configuration saved successfully.")
-        logger.info("QR Scanner configuration saved by user")
+        self.settings_manager.save_setting("qr_scanners", qr_config)
+        
+        plc_ip = self.lineEdit_plc_ip.text().strip()
+        rs485_port = self.combo_rs485_port.currentText()
+        self.settings_manager.save_setting("plc_settings", {"ip_address": plc_ip, "com_port": rs485_port})
+        
+        QMessageBox.information(self, "Saved", "Peripherals configuration saved successfully.")
+        logger.info(f"Peripherals configuration saved by user (PLC IP: {plc_ip})")
 
     def save_report_config(self):
         config = {

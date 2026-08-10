@@ -68,20 +68,6 @@ QPushButton#btn_reset_taps:hover {
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_Controls">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_COM">
-          <item>
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>COM Port:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="comboBox_comPorts"/>
-          </item>
-         </layout>
-        </item>
-        <item>
          <widget class="QGroupBox" name="groupBox_Tapping">
           <property name="title">
            <string>Tapping Controls</string>

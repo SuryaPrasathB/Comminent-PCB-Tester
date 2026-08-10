@@ -43,5 +43,8 @@
                 "v_lower": 5.1
             }
         }
-    }
+    },
+    "plc_communication_mode": "TCP",
+    "plc_tcp_ip": "192.168.0.123",
+    "plc_tcp_port": 502
 }

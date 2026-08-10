@@ -3,7 +3,7 @@ import math
 import threading
 import time
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QObject, Signal
 
 import random
 from src.core.db_utils import save_test_result
@@ -19,12 +19,17 @@ from src.core.config import (
 from src.core.logger import logger
 from src.ui.settings_manager import SettingsManager
 
-class TestRunner(QThread):
-    result_signal = Signal(dict)
+class TestSignals(QObject):
+    # sn, pcb_index, r_v, y_v, b_v, measured_v, measured_i, result
+    result_signal = Signal(int, int, str, str, str, float, float, str)
     finished_signal = Signal(str)
     error_signal = Signal(str)
     running_sn_signal = Signal(int)
     safety_stop_signal = Signal(str)
+
+_test_signal_refs = []
+
+class TestRunner:
 
     def __init__(
             self,
@@ -36,7 +41,9 @@ class TestRunner(QThread):
             active_pcbs=(1,),  # 👈 ADD THIS
             run_single=False
     ):
-        super().__init__()
+        self.signals = TestSignals()
+        _test_signal_refs.append(self.signals)
+        self._thread = threading.Thread(target=self.run, daemon=True)
 
         self.project_name = project_name
         self.pcb_serials  = pcb_serial  # tuple now
@@ -115,6 +122,20 @@ class TestRunner(QThread):
             time.sleep(seconds)
 
     # -------------------------------------------------
+    def start(self):
+        self._thread.start()
+
+    def isRunning(self):
+        return self._thread.is_alive()
+
+    def wait(self, timeout=None):
+        if timeout:
+            self._thread.join(timeout / 1000.0)
+            return not self._thread.is_alive()
+        else:
+            self._thread.join()
+            return True
+
     def run(self):
         threading.current_thread().name = "TestRunner"
         print("[TEST] ====================================")
@@ -140,7 +161,7 @@ class TestRunner(QThread):
                 self.safety_stop_event
             )
             # Connect using queued connection implicitly via Qt when cross-thread
-            self.safety_monitor.safety_alert_signal.connect(self._safety_callback)
+            self.safety_monitor.signals.safety_alert_signal.connect(self._safety_callback)
             self.safety_monitor.start()
             logger.info("SafetyMonitor started within TestRunner")
 
@@ -257,7 +278,7 @@ class TestRunner(QThread):
                 status = "success"
 
             try:
-                self.finished_signal.emit(status)
+                self._safe_emit(self.signals.finished_signal, "success")
             except Exception as e:
                 logger.error(f"Failed to emit finished_signal: {e}")
 
@@ -725,7 +746,9 @@ class TestRunner(QThread):
                 print("[WARN] ac_vals ignored (not a dict):", ac_vals)
                 logger.warning("ac_vals ignored (not a dict)")
 
-        self.result_signal.emit(payload)
+        self.signals.result_signal.emit(
+            tc["sn"], pcb_index, tc['v'], tc['i'], tc['v'], v_meas, i_meas, result
+        )
 
     # -------------------------------------------------
     def _run_impedance_for_pcb(self, tc, pcb_index):
@@ -902,7 +925,7 @@ class TestRunner(QThread):
 
         logger.error(f"Fatal communication error → Device={device}, Slave={slave_name}, Reason={exc}")
 
-        self.error_signal.emit(
+        self._safe_emit(self.signals.error_signal, 
             f"Fatal error\nDevice: {device}\nSlave: {slave_name}\n{exc}"
         )
 
@@ -910,4 +933,4 @@ class TestRunner(QThread):
         print(f"[SAFETY] STOP TRIGGERED: {reason}")
         logger.warning(f"Safety Stop Triggered: {reason}")
         self._stop_requested = True
-        self.safety_stop_signal.emit(reason)
+        self._safe_emit(self.signals.safety_stop_signal, reason)

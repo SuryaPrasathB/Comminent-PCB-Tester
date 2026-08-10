@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QVBoxLayout, QHeaderView
 )
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, QEvent, Qt, QTimer, QThread, Signal
+from PySide6.QtCore import QFile, QIODevice, QEvent, Qt, QTimer, QObject, Signal
 
 from serial.tools import list_ports
 
@@ -18,12 +18,16 @@ from src.core.logger import logger
 from src.ui.icons import IconHelper
 
 
-class StartPoller(QThread):
+class StartPollerSignals(QObject):
     start_signal = Signal()
+    finished = Signal()
 
+_poller_signal_refs = []
+
+class StartPoller:
     def __init__(self, port, slave_id, coil_addr):
-        super().__init__()
-        self.setObjectName("StartPoller")
+        self.signals = StartPollerSignals()
+        _poller_signal_refs.append(self.signals)
         self.port = port
         self.slave_id = slave_id
         self.coil_addr = coil_addr
@@ -31,8 +35,27 @@ class StartPoller(QThread):
         self.stop_event = threading.Event()
         self.client = None
         self.t_name = "Unknown"
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
 
-    def run(self):
+    def start(self):
+        self._thread.start()
+        
+    def stop(self):
+        self.running = False
+        self.stop_event.set()
+
+    def wait(self, timeout=None):
+        if timeout:
+            self._thread.join(timeout / 1000.0)
+            return not self._thread.is_alive()
+        else:
+            self._thread.join()
+            return True
+
+    def isRunning(self):
+        return self._thread.is_alive()
+
+    def _run_loop(self):
         threading.current_thread().name = "StartPoller"
         self.t_name = threading.current_thread().name
         logger.info(f"StartPoller [{self.t_name}] : STARTED on {self.port}")
@@ -51,7 +74,10 @@ class StartPoller(QThread):
                     if coils and coils[0] is True:
                         if not self.running: break
                         logger.info(f"StartPoller [{self.t_name}] : Coil {self.coil_addr} detected ACTIVE")
-                        self.start_signal.emit()
+                        try:
+                            self.signals.start_signal.emit()
+                        except RuntimeError:
+                            pass # Object was safely deleted
                         self.running = False
                         break
 
@@ -64,9 +90,13 @@ class StartPoller(QThread):
                     break
 
         except Exception as e:
-            logger.error(f"StartPoller [{self.t_name}] failed: {e}")
-        finally:
-            logger.info(f"StartPoller [{self.t_name}] : EXITED")
+            logger.error(f"Error in StartPoller: {e}")
+            
+        logger.info(f"StartPoller [{self.t_name}] : STOPPED on {self.port}")
+        try:
+            self.signals.finished.emit()
+        except RuntimeError:
+            pass
 
     def stop(self):
         logger.info(f"StartPoller [{self.t_name}] : Stop requested")
@@ -95,7 +125,6 @@ class ExecutionView(QWidget):
         self._set_running_state(False)
 
         # Initial Setup
-        self._load_com_ports()
         self.refresh_projects()
 
     # =========================================================================
@@ -148,7 +177,6 @@ class ExecutionView(QWidget):
         self.configure_table(self.table_results_2)
 
         # Event Filters for refreshing on click
-        self.cmb_comPort.installEventFilter(self)
         self.cmb_projects.installEventFilter(self)
     # =========================================================================
     def configure_table(self, table):
@@ -190,9 +218,7 @@ class ExecutionView(QWidget):
     # =========================================================================
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:
-            if obj == self.cmb_comPort:
-                self._load_com_ports()
-            elif obj == self.cmb_projects:
+            if obj == self.cmb_projects:
                 self.refresh_projects()
         return super().eventFilter(obj, event)
     # =========================================================================
@@ -206,28 +232,12 @@ class ExecutionView(QWidget):
             lambda: self.run_selected_test(self.table_results_1))
         self.btn_run_selected_2.clicked.connect(
             lambda: self.run_selected_test(self.table_results_2))
-        
-        self.cmb_comPort.currentIndexChanged.connect(self._on_com_port_changed)
 
 
     # =========================================================================
     # LOGIC
     # =========================================================================
 
-    def _load_com_ports(self):
-        logger.info("Scanning COM ports")
-        self.cmb_comPort.blockSignals(True)
-        self.cmb_comPort.clear()
-        self.cmb_comPort.addItem("-- Select COM --")
-
-        for p in list_ports.comports():
-            self.cmb_comPort.addItem(p.device)
-
-        if SIMULATION_MODE:
-            self.cmb_comPort.addItem("SIM_COM")
-
-        self.cmb_comPort.blockSignals(False)
-    # =========================================================================
 
     def refresh_projects(self):
         logger.info("Refreshing projects")
@@ -297,21 +307,32 @@ class ExecutionView(QWidget):
         print("[EXEC] Start tests clicked")
         logger.info("Start tests clicked")
 
+        if getattr(self, '_is_starting', False):
+            return
+        
         if self.runner and self.runner.isRunning():
             logger.warning("Start clicked while TestRunner already running")
             return
 
+        self._is_starting = True
+        try:
+            self._do_start_tests()
+        finally:
+            self._is_starting = False
+
+    def _do_start_tests(self):
         project_name = self.cmb_projects.currentText()
-        com_port = self.cmb_comPort.currentText()
+        from src.ui.settings_manager import SettingsManager
+        com_port = SettingsManager().get_setting("plc_settings", {}).get("com_port", "")
 
         if project_name.startswith("--"):
             logger.warning("Start aborted: project not selected")
             QMessageBox.warning(self, "Error", "Select project")
             return
 
-        if com_port.startswith("--"):
-            logger.warning("Start aborted: COM port not selected")
-            QMessageBox.warning(self, "Error", "Select COM port")
+        if not com_port or com_port.startswith("--"):
+            logger.warning("Start aborted: COM port not configured")
+            QMessageBox.warning(self, "Error", "Configure PLC COM port in Settings first.")
             return
 
         # Stop polling before starting any test
@@ -387,6 +408,14 @@ class ExecutionView(QWidget):
         test_cases = load_test_cases(project_name)
 
         # =====================================================
+        # CLEANUP OLD RUNNER (PURE PYTHON NOW, NO DELETE LATER)
+        # =====================================================
+        if self.runner:
+            if self.runner.isRunning():
+                self.runner.stop()
+            self.runner = None
+
+        # =====================================================
         # CREATE RUNNER
         # =====================================================
         self.runner = TestRunner(
@@ -399,11 +428,11 @@ class ExecutionView(QWidget):
             run_single=False
         )
 
-        self.runner.running_sn_signal.connect(self.highlight_running_row)
-        self.runner.result_signal.connect(self.update_ui_row)
-        self.runner.finished_signal.connect(self.on_tests_finished)
-        self.runner.error_signal.connect(self.on_test_error)
-        self.runner.safety_stop_signal.connect(self.show_safety_popup)
+        self.runner.signals.running_sn_signal.connect(self.highlight_running_row)
+        self.runner.signals.result_signal.connect(self.update_ui_row)
+        self.runner.signals.finished_signal.connect(self.on_tests_finished)
+        self.runner.signals.error_signal.connect(self.on_test_error)
+        self.runner.signals.safety_stop_signal.connect(self.show_safety_popup)
 
         self._set_running_state(True)
 
@@ -412,15 +441,33 @@ class ExecutionView(QWidget):
 
     # -------------------------------------------------
     def run_selected_test(self, table):
+        logger.info("Run selected test clicked")
+        
+        if getattr(self, '_is_starting', False):
+            return
+
+        if self.runner and self.runner.isRunning():
+            logger.warning("Run Selected clicked while TestRunner already running")
+            QMessageBox.warning(self, "Warning", "A test is already running. Please wait or stop it first.")
+            return
+            
+        self._is_starting = True
+        try:
+            self._do_run_selected_test(table)
+        finally:
+            self._is_starting = False
+
+    def _do_run_selected_test(self, table):
         project_name = self.cmb_projects.currentText()
-        com_port = self.cmb_comPort.currentText()
+        from src.ui.settings_manager import SettingsManager
+        com_port = SettingsManager().get_setting("plc_settings", {}).get("com_port", "")
 
         if project_name.startswith("--"):
             QMessageBox.warning(self, "Error", "Select project")
             return
 
-        if com_port.startswith("--"):
-            QMessageBox.warning(self, "Error", "Select COM port")
+        if not com_port or com_port.startswith("--"):
+            QMessageBox.warning(self, "Error", "Configure PLC COM port in Settings first.")
             return
 
         # Stop polling before starting any test
@@ -451,6 +498,16 @@ class ExecutionView(QWidget):
         for col in range(7, 13):
             table.setItem(selected_row, col, QTableWidgetItem(""))
 
+        # =====================================================
+        # CLEANUP OLD RUNNER (CRITICAL TO PREVENT CRASHES)
+        # =====================================================
+        # CLEANUP OLD RUNNER (PURE PYTHON NOW, NO DELETE LATER)
+        # =====================================================
+        if self.runner:
+            if self.runner.isRunning():
+                self.runner.stop()
+            self.runner = None
+
         # Create runner
         self.runner = TestRunner(
             project_name=project_name,
@@ -462,15 +519,13 @@ class ExecutionView(QWidget):
             run_single=True
         )
 
-        # Connect signals (table-aware)
-        self.runner.running_sn_signal.connect(
+        self.runner.signals.running_sn_signal.connect(
             lambda sn: self.highlight_running_row(sn, table)
         )
-        self.runner.result_signal.connect(self.update_ui_row)
-
-        self.runner.finished_signal.connect(self.on_tests_finished)
-        self.runner.error_signal.connect(self.on_test_error)
-        self.runner.safety_stop_signal.connect(self.show_safety_popup)
+        self.runner.signals.result_signal.connect(self.update_ui_row)
+        self.runner.signals.finished_signal.connect(self.on_tests_finished)
+        self.runner.signals.error_signal.connect(self.on_test_error)
+        self.runner.signals.safety_stop_signal.connect(self.show_safety_popup)
 
         self._set_running_state(True)
         self.runner.start()
@@ -542,9 +597,10 @@ class ExecutionView(QWidget):
         # 2️⃣ Reset ALL PLC coils
         # ==============================
         try:
-            com_port = self.cmb_comPort.currentText()
-            if com_port.startswith("--"):
-                QMessageBox.warning(self, "Error", "Select COM port to reset PLC")
+            from src.ui.settings_manager import SettingsManager
+            com_port = SettingsManager().get_setting("plc_settings", {}).get("com_port", "")
+            if not com_port or com_port.startswith("--"):
+                QMessageBox.warning(self, "Error", "Configure PLC COM port in Settings first to reset PLC")
                 return
 
             from src.core.drivers.modbus_manager import ModbusManager
@@ -589,43 +645,44 @@ class ExecutionView(QWidget):
                     table.setItem(row, col, QTableWidgetItem(""))
 
     # -------------------------------------------------
-    def update_ui_row(self, data: dict) -> None:
-        if not isinstance(data, dict):
-            return
-
-        sn = data.get("sn")
-        pcb_index = data.get("pcb_index")
-
-        if sn is None or pcb_index is None:
-            logger.warning("update_ui_row: missing sn or pcb_index")
-            return
-
-        table = (
-            self.table_results_1
-            if pcb_index == 1
-            else self.table_results_2
-        )
-
-        self._update_single_table(table, sn, data)
-
-    # -------------------------------------------------
-
-    def _update_single_table(self, table, sn, data):
-        if not table: return
-        # table row is 0-indexed, sn is 1-indexed usually
+    def update_ui_row(self, sn: int, pcb_index: int, rv: str, yv: str, bv: str, measured_v: float, measured_i: float, result: str):
         row = sn - 1
-        if 0 <= row < table.rowCount():
-            if "r_v" in data: table.setItem(row, 7, QTableWidgetItem(str(data["r_v"])))
-            if "y_v" in data: table.setItem(row, 8, QTableWidgetItem(str(data["y_v"])))
-            if "b_v" in data: table.setItem(row, 9, QTableWidgetItem(str(data["b_v"])))
-            table.setItem(row, 10, QTableWidgetItem(str(data["measured_v"])))
-            table.setItem(row, 11, QTableWidgetItem(str(data["measured_i"])))
 
-            res_item = QTableWidgetItem(data["result"])
-            # Optional: Color code result
-            if data["result"] == "Pass":
+        if pcb_index == 1:
+            table = self.table_results_1
+        elif pcb_index == 2:
+            table = self.table_results_2
+        else:
+            return
+
+        if 0 <= row < table.rowCount():
+            # Apply color mapping
+            
+
+            # --- Update Table Items ---
+            rv_item = QTableWidgetItem(rv)
+            yv_item = QTableWidgetItem(yv)
+            bv_item = QTableWidgetItem(bv)
+            
+            table.setItem(row, 7, rv_item)
+            table.setItem(row, 8, yv_item)
+            table.setItem(row, 9, bv_item)
+            
+            meas_v_item = QTableWidgetItem(f"{measured_v:.3f}")
+            meas_i_item = QTableWidgetItem(f"{measured_i:.3f}")
+
+            meas_v_item.setTextAlignment(Qt.AlignCenter)
+            meas_i_item.setTextAlignment(Qt.AlignCenter)
+
+            table.setItem(row, 10, meas_v_item)
+            table.setItem(row, 11, meas_i_item)
+
+            res_item = QTableWidgetItem(result)
+            res_item.setTextAlignment(Qt.AlignCenter)
+
+            if result.startswith("Pass"):
                 res_item.setForeground(Qt.darkGreen)
-            elif data["result"] == "Fail":
+            elif result == "Fail":
                 res_item.setForeground(Qt.red)
 
             table.setItem(row, 12, res_item)
@@ -838,8 +895,9 @@ class ExecutionView(QWidget):
         if not self.lbl_waiting:
             self.lbl_waiting = self.window().findChild(QWidget, "label_waiting_status")
         
-        com_port = self.cmb_comPort.currentText()
-        if com_port.startswith("--"): 
+        from src.ui.settings_manager import SettingsManager
+        com_port = SettingsManager().get_setting("plc_settings", {}).get("com_port", "")
+        if not com_port or com_port.startswith("--"): 
             if self.lbl_waiting: self.lbl_waiting.setVisible(False)
             self.blink_timer.stop()
             return
@@ -868,7 +926,7 @@ class ExecutionView(QWidget):
             if not start_coil: return
             
             self.poller = StartPoller(com_port, slave_id, start_coil)
-            self.poller.start_signal.connect(self._handle_start_from_coil)
+            self.poller.signals.start_signal.connect(self._handle_start_from_coil)
             self.poller.start()
             
             self.blink_timer.start(800)
@@ -895,16 +953,6 @@ class ExecutionView(QWidget):
 
         if self.poller:
             self.poller.stop()
-            # Synchronously wait for poller to exit to avoid Modbus flood
-            if not self.poller.wait(10000):
-                logger.warning("StartPoller did not exit within 10 seconds.")
-            
-            try:
-                self.poller.start_signal.disconnect(self._handle_start_from_coil)
-            except Exception:
-                pass
-            
-            self.poller.deleteLater()
             self.poller = None
 
     def _handle_start_from_coil(self):
@@ -916,7 +964,7 @@ class ExecutionView(QWidget):
         
         if current_poller and current_poller.isRunning():
             # Wait asynchronously for the poller thread to finish before proceeding
-            current_poller.finished.connect(self._on_poller_finished_for_start)
+            current_poller.signals.finished.connect(self._on_poller_finished_for_start)
         else:
             self._on_poller_finished_for_start()
             

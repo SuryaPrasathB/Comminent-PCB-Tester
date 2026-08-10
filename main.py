@@ -10,6 +10,19 @@ from src.core.logger import logger
 
 
 if __name__ == "__main__":
+    import faulthandler
+    import sys
+    import os
+    
+    # Get the PRO-TRACE log directory
+    app_data = os.getenv("LOCALAPPDATA", os.path.expanduser("~"))
+    log_dir = os.path.join(app_data, "PRO-TRACE", "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Open a file to dump the crash log
+    crash_log_path = os.path.join(log_dir, "crash_dump_faulthandler.log")
+    crash_log = open(crash_log_path, "a")
+    faulthandler.enable(file=crash_log)
     logger.info("Application startup initiated")
 
     # Install global crash handler (before anything else)

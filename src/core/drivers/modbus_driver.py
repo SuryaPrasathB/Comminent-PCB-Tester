@@ -180,7 +180,7 @@ class ModbusRTU:
                     if self.is_simulated:
                         return None 
 
-                    time.sleep(0.25)
+                    time.sleep(0.05)
                     
                     ser = getattr(self.client, 'socket', None)
                     if not ser:
@@ -189,13 +189,14 @@ class ModbusRTU:
 
                     # EMI Safe Patch: Add a sleep after writing to let relays settle
                     if ser and not getattr(ser, '_emi_patched', False):
-                        original_write = ser.write
-                        def emi_safe_write(data):
-                            res = original_write(data)
-                            time.sleep(0.15)
-                            return res
-                        ser.write = emi_safe_write
-                        setattr(ser, '_emi_patched', True)
+                        if hasattr(ser, 'write'):
+                            original_write = ser.write
+                            def emi_safe_write(data):
+                                res = original_write(data)
+                                time.sleep(0.15)
+                                return res
+                            ser.write = emi_safe_write
+                            setattr(ser, '_emi_patched', True)
 
                     method = getattr(self.client, method_name)
                     
@@ -254,7 +255,9 @@ class ModbusRTU:
         
         logger.error(f"[{t_name}] Modbus operation failed after {max_retries} attempts: {last_exception}")
         self.reset_connection()
-        raise last_exception
+        if last_exception:
+            raise last_exception
+        raise Exception(f"Modbus operation failed after {max_retries} attempts without specific exception")
 
     def _retry_wrapper(self, method_name, *args, **kwargs):
         t_name = threading.current_thread().name
@@ -270,10 +273,21 @@ class ModbusRTU:
         }
         self.request_queue.put(req)
         
+        start_wait = time.time()
         # Prevent GUI freeze if called from MainThread
         while not req['event'].wait(0.05):
             if not self.worker_thread.is_alive():
                 req['error'] = RuntimeError(f"ModbusWorker thread for {self.port} is dead. Cannot execute {method_name}.")
+                break
+                
+            if time.time() - start_wait > 15.0:
+                logger.critical(f"ModbusWorker {self.port} HUNG for > 15s! Forcing client close to unblock kernel...")
+                try:
+                    if self.client:
+                        self.client.close()
+                except Exception:
+                    pass
+                req['error'] = RuntimeError(f"FATAL: {self.port} HUNG (USB/EMI crash). Port forced closed.")
                 break
                 
             if threading.current_thread().name == "MainThread":
@@ -285,8 +299,11 @@ class ModbusRTU:
                 except ImportError:
                     pass
         
-        if req['error']:
-            raise req['error']
+        err = req['error']
+        if err is not None:
+            if isinstance(err, BaseException):
+                raise err
+            raise RuntimeError(f"Unknown error occurred: {err}")
         return req['result']
 
     # ---------------- COILS ----------------
@@ -526,16 +543,19 @@ class ModbusTCP(ModbusRTU):
         from src.core.config import SIMULATION_MODE
         logger.info(f"Initializing ModbusTCP | ip={ip}, port={port}, timeout={timeout}, SIMULATION_MODE={SIMULATION_MODE}")
 
+        self.ip = ip
         # Initialize parent RTU to set up queue, lock, and worker thread
         super().__init__(port=str(ip) + ":" + str(port), baudrate=9600, timeout=timeout)
-        self.ip = ip
         self.worker_thread.name = f"ModbusWorker-TCP-{self.ip}"
 
-    def _initialize_client(self):
+    def _ensure_connected(self):
         with self.lock:
             if self.is_simulated:
                 return True
                 
+            if self.client is not None:
+                return True
+
             from pymodbus.client import ModbusTcpClient
             try:
                 self.client = ModbusTcpClient(

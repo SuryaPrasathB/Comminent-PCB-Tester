@@ -36,7 +36,6 @@ class DebugView(QWidget):
 
         self.load_ui()
         self.setup_icons()
-        self.populate_com_ports()
         self.populate_tappings()
         self.connect_signals()
 
@@ -87,8 +86,6 @@ class DebugView(QWidget):
         self.setLayout(layout)
 
         # ================= Widget Bindings =================
-
-        self.cmb_com = self.findChild(QComboBox, "comboBox_comPorts")
 
         self.cmb_r = self.findChild(QComboBox, "combo_r_voltage")
         self.cmb_y = self.findChild(QComboBox, "combo_y_voltage")
@@ -167,9 +164,6 @@ class DebugView(QWidget):
         self.btn_imp2_b = self.findChild(QWidget, "btn_imp2_b")
         self.btn_imp2_n = self.findChild(QWidget, "btn_imp2_n")
 
-        # Rescan COM on click
-        self.cmb_com.installEventFilter(self)
-
         # ---------------- DIAGNOSTIC TOOLS ----------------
         self._add_diagnostic_tools()
 
@@ -214,32 +208,6 @@ class DebugView(QWidget):
     def setup_icons(self):
         IconHelper.apply_icon(self.btn_apply, "check", "white")
         IconHelper.apply_icon(self.btn_reset, "times", "black")
-
-    # -------------------------------------------------
-    def eventFilter(self, obj, event):
-        if obj == self.cmb_com and event.type() == QEvent.MouseButtonPress:
-            self.populate_com_ports()
-        return super().eventFilter(obj, event)
-
-    # -------------------------------------------------
-    def populate_com_ports(self):
-        self.cmb_com.blockSignals(True)
-        self.cmb_com.clear()
-        
-        from src.ui.settings_manager import SettingsManager
-        mode = SettingsManager().get_setting("plc_communication_mode", "Serial")
-        
-        if mode == "TCP":
-            self.cmb_com.addItem("TCP Connection")
-            self.cmb_com.setEnabled(False)
-        else:
-            self.cmb_com.addItem("-- Select COM --")
-            import serial.tools.list_ports
-            for p in serial.tools.list_ports.comports():
-                self.cmb_com.addItem(p.device)
-            self.cmb_com.setEnabled(True)
-            
-        self.cmb_com.blockSignals(False)
 
     # -------------------------------------------------
     def populate_tappings(self):
@@ -307,21 +275,36 @@ class DebugView(QWidget):
 
     # =========================================================================
 
-    def _get_modbus(self):
-        com = self.cmb_com.currentText()
-        if com.startswith("--"):
-            raise RuntimeError("COM not selected")
+    def _get_plc_modbus(self):
+        from src.ui.settings_manager import SettingsManager
+        from src.core.drivers.modbus_driver import ModbusTCP
         
-        self.modbus = ModbusManager.get_client(port=com)
-        self.current_com = com
-        return self.modbus
+        plc = SettingsManager().get_setting("plc_settings", {})
+        ip = plc.get("ip_address", "")
+        if not ip:
+            raise RuntimeError("PLC IP Address not configured in settings.")
+        
+        self.modbus_plc = ModbusTCP(ip=ip, port=502, timeout=1.0)
+        return self.modbus_plc
+
+    def _get_meter_modbus(self):
+        from src.ui.settings_manager import SettingsManager
+        from src.core.drivers.modbus_driver import ModbusRTU
+        
+        plc = SettingsManager().get_setting("plc_settings", {})
+        com = plc.get("com_port", "")
+        if not com or com.startswith("--"):
+            raise RuntimeError("Measurement COM Port not configured in settings.")
+            
+        self.modbus_meter = ModbusRTU(port=com, baudrate=9600, timeout=1.0)
+        return self.modbus_meter
 
     # -------------------------------------------------
     def apply_all_taps(self):
         try:
             print("=== apply_all_taps(): START ===")
 
-            mb = self._get_modbus()
+            mb = self._get_plc_modbus()
             print("Modbus connection obtained")
 
             plc = SLAVE_DEVICES["PLC"]
@@ -439,7 +422,7 @@ class DebugView(QWidget):
 
     def reset_all_relays(self):
         try:
-            mb = self._get_modbus()
+            mb = self._get_plc_modbus()
             plc = SLAVE_DEVICES["PLC"]
             for _, addr in plc["coils"].items():
                 mb.write_coil(plc["slave_id"], addr, False)
@@ -453,7 +436,7 @@ class DebugView(QWidget):
     # -------------------------------------------------
     def toggle_main_contactor(self):
         try:
-            mb = self._get_modbus()
+            mb = self._get_plc_modbus()
             plc = SLAVE_DEVICES["PLC"]
 
             coil_addr = plc["coils"]["MAIN_CONTACTOR"]
@@ -487,7 +470,7 @@ class DebugView(QWidget):
 
     def toggle_impedance_pcb1(self):
         try:
-            mb = self._get_modbus()
+            mb = self._get_plc_modbus()
             plc = SLAVE_DEVICES["PLC"]
 
             self.imp_test_pcb1_on = not self.imp_test_pcb1_on
@@ -507,7 +490,7 @@ class DebugView(QWidget):
 
     def toggle_impedance_pcb2(self):
         try:
-            mb = self._get_modbus()
+            mb = self._get_plc_modbus()
             plc = SLAVE_DEVICES["PLC"]
 
             self.imp_test_pcb2_on = not self.imp_test_pcb2_on
@@ -527,7 +510,7 @@ class DebugView(QWidget):
 
     def toggle_pcb2_enable(self):
         try:
-            mb = self._get_modbus()
+            mb = self._get_plc_modbus()
             plc = SLAVE_DEVICES["PLC"]
 
             self.pcb2_enabled = not self.pcb2_enabled
@@ -547,7 +530,7 @@ class DebugView(QWidget):
 
     def toggle_imp_relay(self, relay_name, button):
         try:
-            mb = self._get_modbus()
+            mb = self._get_plc_modbus()
             plc = SLAVE_DEVICES["PLC"]
 
             # Toggle state
@@ -598,7 +581,7 @@ class DebugView(QWidget):
     # -------------------------------------------------
     def read_modbus(self, key, field):
         try:
-            mb = self._get_modbus()
+            mb = self._get_meter_modbus()
             for _, dev in SLAVE_DEVICES.items():
                 if "reads" in dev and key in dev["reads"]:
                     reg = dev["registers"][dev["reads"][key]]
@@ -616,5 +599,9 @@ class DebugView(QWidget):
 
     # -------------------------------------------------
     def _close_modbus(self):
-        # We don't close the shared modbus client here anymore
-        pass
+        if hasattr(self, 'modbus_plc') and self.modbus_plc:
+            try: self.modbus_plc.close()
+            except: pass
+        if hasattr(self, 'modbus_meter') and self.modbus_meter:
+            try: self.modbus_meter.close()
+            except: pass
