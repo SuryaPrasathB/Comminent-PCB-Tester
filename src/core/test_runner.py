@@ -209,6 +209,7 @@ class TestRunner(QThread):
                     logger.info("MAINS OFF (final safety)")
 
                     self.modbus.write_coil( plc_slave,coils["MAIN_CONTACTOR"],False)
+                    self.modbus.sleep_worker(2.0)
                     time.sleep(0.5)                    # 2️⃣ Turn OFF all relays in a batch (addresses 1-31 are contiguous relays)
                     # We avoid writing to 35, 102+ which are inputs
                     start_cleanup = time.time()
@@ -276,6 +277,11 @@ class TestRunner(QThread):
         plc = SLAVE_DEVICES["PLC"]
         plc_slave = plc["slave_id"]
         coils = plc["coils"]
+
+        # PREVENT HOT SWITCHING: Always ensure MAINS is OFF before any new test case configures relays
+        print("[PLC] MAINS OFF (pre-test safety)")
+        self.modbus.write_coil(plc_slave, coils["MAIN_CONTACTOR"], False)
+        self.modbus.sleep_worker(2.0)
 
         # =================================================
         # 1️⃣ IMPEDANCE TEST
@@ -440,6 +446,7 @@ class TestRunner(QThread):
             logger.info("MAINS ON → MAIN_CONTACTOR ON")
 
             self.modbus.write_coil( plc_slave, coils["MAIN_CONTACTOR"],True)
+            self.modbus.sleep_worker(2.0)
 
             # Calculate extra stabilization time for high voltages
             extra_delay = 0.0

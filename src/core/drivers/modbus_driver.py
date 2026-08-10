@@ -95,13 +95,28 @@ class ModbusRTU:
         req = {'method': 'STOP'}
         self.request_queue.put(req)
 
-        # Wait for worker to finish if we are not in the worker thread
         if threading.current_thread() != self.worker_thread:
             self.worker_thread.join(timeout=2.0)
             if self.worker_thread.is_alive():
                 logger.warning(f"[{t_name}] Modbus worker thread on {self.port} did not exit within timeout.")
 
         self.reset_connection()
+
+    def sleep_worker(self, duration=2.0):
+        """
+        Forces the Modbus worker thread to sleep, pausing all background Modbus polling. 
+        Useful for riding through massive EMI spikes (e.g. contactor switching) safely.
+        """
+        if self.is_simulated:
+            return
+            
+        req = {
+            'method': 'SLEEP',
+            'duration': duration,
+            'event': threading.Event(),
+        }
+        self.request_queue.put(req)
+        req['event'].wait()
 
     def _worker_loop(self):
         """Dedicated thread to process all Modbus and Raw IO requests strictly sequentially."""
@@ -113,6 +128,11 @@ class ModbusRTU:
                 
                 if method_name == 'STOP':
                     break
+                
+                if method_name == 'SLEEP':
+                    time.sleep(req.get('duration', 1.0))
+                    req['event'].set()
+                    continue
                 
                 if method_name == 'send_raw_receive':
                     try:
