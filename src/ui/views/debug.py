@@ -225,9 +225,20 @@ class DebugView(QWidget):
     def populate_com_ports(self):
         self.cmb_com.blockSignals(True)
         self.cmb_com.clear()
-        self.cmb_com.addItem("-- Select COM --")
-        for p in serial.tools.list_ports.comports():
-            self.cmb_com.addItem(p.device)
+        
+        from src.ui.settings_manager import SettingsManager
+        mode = SettingsManager().get_setting("plc_communication_mode", "Serial")
+        
+        if mode == "TCP":
+            self.cmb_com.addItem("TCP Connection")
+            self.cmb_com.setEnabled(False)
+        else:
+            self.cmb_com.addItem("-- Select COM --")
+            import serial.tools.list_ports
+            for p in serial.tools.list_ports.comports():
+                self.cmb_com.addItem(p.device)
+            self.cmb_com.setEnabled(True)
+            
         self.cmb_com.blockSignals(False)
 
     # -------------------------------------------------
