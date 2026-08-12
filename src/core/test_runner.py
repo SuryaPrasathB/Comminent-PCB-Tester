@@ -51,7 +51,20 @@ class TestRunner:
         self.start_index  = start_index
         self.run_single   = run_single
         self.com_port     = com_port
-        self.active_pcbs  = active_pcbs
+        
+        valid_pcbs = []
+        for pcb in active_pcbs:
+            idx = pcb - 1
+            if idx < len(pcb_serial):
+                serial = pcb_serial[idx]
+                if serial and "NG" in serial.upper():
+                    print(f"[TEST] PCB {pcb} QR is NG. Skipping this PCB.")
+                else:
+                    valid_pcbs.append(pcb)
+            else:
+                valid_pcbs.append(pcb)
+        
+        self.active_pcbs = tuple(valid_pcbs)
 
         self._stop_requested = False
         self._fatal_error = False
@@ -141,6 +154,11 @@ class TestRunner:
         print("[TEST] ====================================")
         print("[TEST] Test execution started")
         logger.info("Test execution started")
+
+        if not self.active_pcbs:
+            print("[TEST] No valid PCBs to test (e.g. all NG). Aborting run.")
+            logger.warning("No valid PCBs to test. Aborting run.")
+            self._fatal_error = True
 
         try:
             from src.core.db_utils import connect_db
@@ -278,7 +296,7 @@ class TestRunner:
                 status = "success"
 
             try:
-                self._safe_emit(self.signals.finished_signal, "success")
+                self._safe_emit(self.signals.finished_signal, status)
             except Exception as e:
                 logger.error(f"Failed to emit finished_signal: {e}")
 
@@ -286,7 +304,7 @@ class TestRunner:
     def _execute_test(self, tc):
         sn = tc["sn"]
 
-        self.running_sn_signal.emit(sn)
+        self.signals.running_sn_signal.emit(sn)
 
         self._sep()
         print(f"[TEST] Executing Test SN : {sn}")
@@ -934,3 +952,9 @@ class TestRunner:
         logger.warning(f"Safety Stop Triggered: {reason}")
         self._stop_requested = True
         self._safe_emit(self.signals.safety_stop_signal, reason)
+
+    def _safe_emit(self, signal, *args):
+        try:
+            signal.emit(*args)
+        except Exception as e:
+            logger.warning(f"Failed to emit signal: {e}")

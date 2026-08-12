@@ -354,12 +354,19 @@ class ExecutionView(QWidget):
             sn2 = self._read_qr("QR_SCANNER_2", com_port)
 
             fail_msgs = []
-            if not sn1: fail_msgs.append("PCB-1 QR Scanner failed")
-            if not sn2: fail_msgs.append("PCB-2 QR Scanner failed")
+            if not sn1: 
+                fail_msgs.append("PCB 1 QR Scanner failed (No Response)")
+            elif "NG" in sn1.upper():
+                fail_msgs.append("QR scanning failed for PCB 1, check QR Code.")
+
+            if not sn2: 
+                fail_msgs.append("PCB 2 QR Scanner failed (No Response)")
+            elif "NG" in sn2.upper():
+                fail_msgs.append("QR scanning failed for PCB 2, check QR Code.")
 
             if fail_msgs:
-                logger.warning("QR read failed")
-                QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs) + "\n\nTip: Check cables or try 'Reset Bus' if hardware is unresponsive.")
+                logger.warning("QR read failed or NG received")
+                QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs) + "\n\nTip: Check cables, verify the QR is readable, or try 'Reset Bus' if hardware is unresponsive.")
                 return
 
         except Exception as e:
@@ -428,11 +435,11 @@ class ExecutionView(QWidget):
             run_single=False
         )
 
-        self.runner.signals.running_sn_signal.connect(self.highlight_running_row)
-        self.runner.signals.result_signal.connect(self.update_ui_row)
-        self.runner.signals.finished_signal.connect(self.on_tests_finished)
-        self.runner.signals.error_signal.connect(self.on_test_error)
-        self.runner.signals.safety_stop_signal.connect(self.show_safety_popup)
+        self.runner.signals.running_sn_signal.connect(self.highlight_running_row, Qt.QueuedConnection)
+        self.runner.signals.result_signal.connect(self.update_ui_row, Qt.QueuedConnection)
+        self.runner.signals.finished_signal.connect(self.on_tests_finished, Qt.QueuedConnection)
+        self.runner.signals.error_signal.connect(self.on_test_error, Qt.QueuedConnection)
+        self.runner.signals.safety_stop_signal.connect(self.show_safety_popup, Qt.QueuedConnection)
 
         self._set_running_state(True)
 
@@ -482,6 +489,17 @@ class ExecutionView(QWidget):
         # Ensure we pass a tuple of serials, even for single run
         sn1 = self.txt_pcb_serial_1.text().strip() or "SINGLE_1"
         sn2 = self.txt_pcb_serial_2.text().strip() or "SINGLE_2"
+        
+        fail_msgs = []
+        if "NG" in sn1.upper():
+            fail_msgs.append("QR scanning failed for PCB 1, check QR Code.")
+        if "NG" in sn2.upper():
+            fail_msgs.append("QR scanning failed for PCB 2, check QR Code.")
+            
+        if fail_msgs:
+            QMessageBox.warning(self, "QR Error", "\n".join(fail_msgs) + "\n\nCannot run test with invalid QR code.")
+            return
+
         pcb_serials = (sn1, sn2)
 
         test_cases = load_test_cases(project_name)
@@ -520,12 +538,12 @@ class ExecutionView(QWidget):
         )
 
         self.runner.signals.running_sn_signal.connect(
-            lambda sn: self.highlight_running_row(sn, table)
+            lambda sn: self.highlight_running_row(sn, table), Qt.QueuedConnection
         )
-        self.runner.signals.result_signal.connect(self.update_ui_row)
-        self.runner.signals.finished_signal.connect(self.on_tests_finished)
-        self.runner.signals.error_signal.connect(self.on_test_error)
-        self.runner.signals.safety_stop_signal.connect(self.show_safety_popup)
+        self.runner.signals.result_signal.connect(self.update_ui_row, Qt.QueuedConnection)
+        self.runner.signals.finished_signal.connect(self.on_tests_finished, Qt.QueuedConnection)
+        self.runner.signals.error_signal.connect(self.on_test_error, Qt.QueuedConnection)
+        self.runner.signals.safety_stop_signal.connect(self.show_safety_popup, Qt.QueuedConnection)
 
         self._set_running_state(True)
         self.runner.start()
@@ -789,28 +807,53 @@ class ExecutionView(QWidget):
             
             if not is_run_single:
                 if popup_results:
-                    dialog = TestCompletionDialog(popup_results, self.ui)
-                    dialog.exec_()
+                    if hasattr(self, 'completion_view') and self.completion_view is not None:
+                        try:
+                            self.completion_view.deleteLater()
+                        except RuntimeError:
+                            pass
+                    self.completion_view = TestCompletionDialog(popup_results, self.ui)
+                    self.completion_view.exec_()
                 else:
-                    QMessageBox.information(self.ui, "Test Completed", "All tests have been completed successfully.\nReports generated.")
+                    msg = QMessageBox(self.ui)
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setWindowTitle("Test Completed")
+                    msg.setText("All tests have been completed successfully.\nReports generated.")
+                    msg.exec_()
+                    msg.deleteLater()
 
             self._start_polling()
 
         elif status == "error":
             print("[EXEC] on_tests_finished : error")
             logger.info("[EXEC] on_tests_finished : error")
-            QMessageBox.information(self.ui, "Test Failed", "Error")
+            msg = QMessageBox(self.ui)
+            msg.setIcon(QMessageBox.Critical)
+            msg.setWindowTitle("Test Failed")
+            msg.setText("Error occurred during test execution.")
+            msg.exec_()
+            msg.deleteLater()
             self._start_polling()
         elif status == "stop_requested":
             print("[EXEC] on_tests_finished : stopped")
             logger.info("[EXEC] on_tests_finished : stopped")
-            QMessageBox.information(self.ui, "Test Completed", "All tests have been stopped successfully.")
+            msg = QMessageBox(self.ui)
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Test Completed")
+            msg.setText("All tests have been stopped successfully.")
+            msg.exec_()
+            msg.deleteLater()
             self._start_polling()
 
 
     # -------------------------------------------------
     def on_test_error(self, msg):
-        QMessageBox.critical(self, "Error", msg)
+        msg_box = QMessageBox(self.ui)
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setWindowTitle("Error")
+        msg_box.setText(msg)
+        msg_box.exec_()
+        msg_box.deleteLater()
 
     # -------------------------------------------------
     def check_safety_pre_start(self, com_port):
@@ -859,12 +902,13 @@ class ExecutionView(QWidget):
             pass
 
     def show_safety_popup(self, reason):
-        msg = QMessageBox(self)
+        msg = QMessageBox(self.ui)
         msg.setIcon(QMessageBox.Critical)
         msg.setWindowTitle("Safety Alert")
         msg.setText(f"Operation Stopped!\n\nReason: {reason}")
         msg.setStandardButtons(QMessageBox.Close)
-        msg.exec()
+        msg.exec_()
+        msg.deleteLater()
 
     # =========================================================
     # POLLING LOGIC
@@ -926,7 +970,7 @@ class ExecutionView(QWidget):
             if not start_coil: return
             
             self.poller = StartPoller(com_port, slave_id, start_coil)
-            self.poller.signals.start_signal.connect(self._handle_start_from_coil)
+            self.poller.signals.start_signal.connect(self._handle_start_from_coil, Qt.QueuedConnection)
             self.poller.start()
             
             self.blink_timer.start(800)
@@ -964,7 +1008,7 @@ class ExecutionView(QWidget):
         
         if current_poller and current_poller.isRunning():
             # Wait asynchronously for the poller thread to finish before proceeding
-            current_poller.signals.finished.connect(self._on_poller_finished_for_start)
+            current_poller.signals.finished.connect(self._on_poller_finished_for_start, Qt.QueuedConnection)
         else:
             self._on_poller_finished_for_start()
             
